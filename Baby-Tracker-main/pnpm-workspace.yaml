@@ -1,9 +1,0 @@
-packages:
-  - "apps/mobile-app"
-  - "packages/*"
-allowBuilds:
-  '@firebase/util': true
-  msgpackr-extract: true
-  protobufjs: true
-  unrs-resolver: true
-confirmModulesPurge: false

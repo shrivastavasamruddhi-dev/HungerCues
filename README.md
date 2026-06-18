@@ -1,4 +1,4 @@
-# HungerCues: An AI-Powered Intelligent Child Development Companion
+y# HungerCues: An AI-Powered Intelligent Child Development Companion
 
 > **One-line Pitch for Judges:**
 > HungerCues is an AI-powered parenting companion that leverages the Gemini API as its core reasoning engine to transform raw baby activity data (feeding, sleep, metrics) into personalized, proactive, and actionable childcare guidance.

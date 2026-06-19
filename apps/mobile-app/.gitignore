@@ -39,3 +39,21 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Environment files
+.env
+*.env
+
+# backend env
+apps/backend/.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Temporary files
+server_output.txt
+*.backup
+
+# Database
+*.db

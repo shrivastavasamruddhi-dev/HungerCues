@@ -1,1 +1,42 @@
-node_modules
+# dependencies
+node_modules/
+.venv/
+env/
+venv/
+
+# Environment / Secret files (protect API keys)
+.env
+.env.*
+*.env
+apps/backend/.env
+
+# SQLite databases
+*.db
+*.db-journal
+*.sqlite
+baby_tracker.db
+apps/backend/baby_tracker.db
+
+# Python caches and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# Expo / React Native local files
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# macOS system files
+.DS_Store
+
+# Temporary, build, log or cached files
+server_output.txt
+original.tsx
+*.log
+*.backup
+*.tmp

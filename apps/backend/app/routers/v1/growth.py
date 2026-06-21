@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
@@ -27,9 +27,17 @@ class GrowthRecordSchema(BaseModel):
     weight_kg: float | None
     height_cm: float | None
     notes: str | None
+    deleted_at: datetime | None = None
 
     class Config:
         from_attributes = True
+
+    @field_validator('recorded_at', 'deleted_at', mode='after')
+    @classmethod
+    def ensure_utc(cls, v: datetime | None) -> datetime | None:
+        if v is not None and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
 
 
 @router.post("/", response_model=GrowthRecordSchema)
@@ -80,8 +88,24 @@ async def list_growth_records(
 
     stmt = (
         select(GrowthRecord)
-        .where(GrowthRecord.baby_id == baby_id)
+        .where(GrowthRecord.baby_id == baby_id, GrowthRecord.deleted_at == None)
         .order_by(GrowthRecord.recorded_at.desc())
     )
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+@router.delete("/{growth_id}")
+async def delete_growth_record(
+    growth_id: int,
+    db: AsyncSession = Depends(get_db),
+    firebase_uid: str = Depends(get_current_firebase_uid),
+):
+    stmt = select(GrowthRecord).where(GrowthRecord.id == growth_id)
+    result = await db.execute(stmt)
+    record = result.scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail="Growth record not found")
+    record.deleted_at = datetime.utcnow()
+    await db.commit()
+    return {"status": "success"}

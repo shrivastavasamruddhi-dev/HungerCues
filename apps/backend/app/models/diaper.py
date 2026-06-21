@@ -18,3 +18,4 @@ class DiaperChange(Base):
     changed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

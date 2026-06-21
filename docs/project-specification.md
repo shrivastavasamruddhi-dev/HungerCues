@@ -362,8 +362,6 @@ Store:
 
 ## Sleep Tracking
 
-## Sleep Tracking
-
 The application supports two sleep tracking methods.
 
 ### Method 1: Manual Sleep Entry
@@ -532,7 +530,6 @@ Track:
 
 * Weight
 * Height
-* Head Circumference
 
 ---
 

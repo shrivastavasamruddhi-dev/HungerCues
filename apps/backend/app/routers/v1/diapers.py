@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -21,9 +21,17 @@ class DiaperChangeCreate(BaseModel):
 
 class DiaperChangeSchema(DiaperChangeCreate):
     id: int
+    deleted_at: datetime | None = None
 
     class Config:
         from_attributes = True
+
+    @field_validator('changed_at', 'deleted_at', mode='after')
+    @classmethod
+    def ensure_utc(cls, v: datetime | None) -> datetime | None:
+        if v is not None and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
 
 
 @router.post("/", response_model=DiaperChangeSchema)
@@ -47,8 +55,24 @@ async def list_diaper_changes(
 ):
     stmt = (
         select(DiaperChange)
-        .where(DiaperChange.baby_id == baby_id)
+        .where(DiaperChange.baby_id == baby_id, DiaperChange.deleted_at == None)
         .order_by(DiaperChange.changed_at.desc())
     )
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+@router.delete("/{diaper_id}")
+async def delete_diaper_change(
+    diaper_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_firebase_uid),
+):
+    stmt = select(DiaperChange).where(DiaperChange.id == diaper_id)
+    result = await db.execute(stmt)
+    change = result.scalar_one_or_none()
+    if not change:
+        raise HTTPException(status_code=404, detail="Diaper change record not found")
+    change.deleted_at = datetime.utcnow()
+    await db.commit()
+    return {"status": "success"}

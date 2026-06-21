@@ -1,4 +1,3 @@
-
 export interface Baby {
   id: number;
   name: string;
@@ -15,6 +14,7 @@ export interface Feeding {
   quantity_ml?: number | null;
   breast_side?: string | null;
   notes?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface SleepSession {
@@ -25,6 +25,7 @@ export interface SleepSession {
   duration_minutes?: number | null;
   tracking_method: string;
   notes?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface DiaperChange {
@@ -33,6 +34,7 @@ export interface DiaperChange {
   changed_at: string;
   type: string;
   notes?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface GrowthRecord {
@@ -42,6 +44,7 @@ export interface GrowthRecord {
   weight_kg?: number | null;
   height_cm?: number | null;
   notes?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface AIInsight {
@@ -74,7 +77,6 @@ export interface AIWeeklySummary {
   growth_insights: string;
   recommendations: string[];
 }
-
 
 const defaultHost = '192.168.1.6';
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? `http://${defaultHost}:8000/api/v1`;
@@ -141,13 +143,31 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
-  deleteMilestone: (id: number) => request<{ status: string }>(`/milestones/${id}`, { method: 'DELETE' }),
-  getWeeklySummary: (babyId: number) => request<AIWeeklySummary>(`/ai/weekly-summary/${babyId}`, { method: 'POST' }),
+  deleteMilestone: (id: number) =>
+    request<{ status: string }>(`/milestones/${id}`, { method: 'DELETE' }),
+  getWeeklySummary: (babyId: number) =>
+    request<AIWeeklySummary>(`/ai/weekly-summary/${babyId}`, { method: 'POST' }),
   listRecentNotifications: () => request<NotificationEntry[]>('/notifications/recent'),
+  clearNotifications: () => request<{ status: string }>('/notifications/clear', { method: 'POST' }),
+  deleteNotification: (id: number) =>
+    request<{ status: string }>(`/notifications/${id}`, { method: 'DELETE' }),
   registerDeviceToken: (payload: { fcm_token: string; baby_id: number }) =>
     request<{ status: string }>('/notifications/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-
+  deleteFeeding: (id: number) =>
+    request<{ status: string }>(`/feedings/${id}`, { method: 'DELETE' }),
+  deleteSleep: (id: number) => request<{ status: string }>(`/sleep/${id}`, { method: 'DELETE' }),
+  deleteDiaper: (id: number) => request<{ status: string }>(`/diapers/${id}`, { method: 'DELETE' }),
+  deleteGrowth: (id: number) => request<{ status: string }>(`/growth/${id}`, { method: 'DELETE' }),
+  listDeletedActivities: (babyId: number) =>
+    request<{
+      feedings: Feeding[];
+      sleep: SleepSession[];
+      diapers: DiaperChange[];
+      growth: GrowthRecord[];
+    }>(`/activities/deleted/baby/${babyId}`),
+  restoreActivity: (kind: string, id: number) =>
+    request<{ status: string }>(`/activities/restore/${kind}/${id}`, { method: 'POST' }),
 };

@@ -90,6 +90,12 @@ async def verify_and_setup_db() -> None:
             await conn.execute(text("ALTER TABLE feedings ADD COLUMN breast_side VARCHAR(20)"))
         except Exception:
             pass
+        # Safely attempt to add deleted_at columns for soft deletion
+        for table in ["feedings", "sleep_sessions", "diaper_changes", "growth_records"]:
+            try:
+                await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN deleted_at DATETIME"))
+            except Exception:
+                pass
     logger.info("Database schema initialized (tables created).")
 
 

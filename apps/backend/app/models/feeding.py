@@ -16,3 +16,4 @@ class Feeding(Base):
     quantity_ml: Mapped[float | None] = mapped_column(Float, nullable=True)
     breast_side: Mapped[str | None] = mapped_column(String(20), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

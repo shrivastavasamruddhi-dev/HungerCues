@@ -1,7 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Animated,
   Modal,
+  PanResponder,
+  Platform,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -14,7 +18,18 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { api, AIInsight, Baby, DiaperChange, Feeding, SleepSession, GrowthRecord, Milestone, NotificationEntry, AIWeeklySummary } from './src/api';
+import {
+  api,
+  AIInsight,
+  Baby,
+  DiaperChange,
+  Feeding,
+  SleepSession,
+  GrowthRecord,
+  Milestone,
+  NotificationEntry,
+  AIWeeklySummary,
+} from './src/api';
 
 type Tab = 'home' | 'log' | 'history' | 'insights' | 'milestones' | 'growth';
 type Activity = 'feed' | 'sleep' | 'diaper' | 'growth';
@@ -49,6 +64,7 @@ const activityMeta = {
 export default function App() {
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>('home');
+  const [previousTab, setPreviousTab] = useState<Tab>('home');
   const [filter, setFilter] = useState<'all' | Activity>('all');
   const [activity, setActivity] = useState<Activity>('feed');
   const [feedType, setFeedType] = useState<FeedType>('Breast');
@@ -78,9 +94,9 @@ export default function App() {
   const [customTime, setCustomTime] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
+  const [showLogMenu, setShowLogMenu] = useState(false);
+  const [showDeletedModal, setShowDeletedModal] = useState(false);
   const compact = width < 430;
-
-
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -279,6 +295,8 @@ export default function App() {
           notes: notes || null,
         });
       } else if (activity === 'sleep') {
+        // Determine tracking_method: 'night' if user chose Night type, otherwise mode-based
+        const isNightSleep = subtype === 'Night';
         if (sleepTrackingMode === 'timer') {
           if (!activeSleepStart) return;
           const start = new Date(activeSleepStart);
@@ -288,7 +306,7 @@ export default function App() {
             sleep_start: activeSleepStart,
             sleep_end: now.toISOString(),
             duration_minutes: minutes,
-            tracking_method: 'timer',
+            tracking_method: isNightSleep ? 'night' : 'timer',
             notes: notes || null,
           });
           setActiveSleepStart(null);
@@ -310,7 +328,7 @@ export default function App() {
             sleep_start: startTime.toISOString(),
             sleep_end: endTime.toISOString(),
             duration_minutes: minutes,
-            tracking_method: 'manual',
+            tracking_method: isNightSleep ? 'night' : 'manual',
             notes: notes || null,
           });
         }
@@ -360,6 +378,7 @@ export default function App() {
       await loadData(false);
       setNotice(`${activityMeta[activity].label} saved to the database`);
       setTimeout(() => setNotice(null), 2500);
+      setPreviousTab(tab);
       setTab('history');
     } catch {
       setError('This entry could not be saved. Check the backend connection and try again.');
@@ -415,46 +434,80 @@ export default function App() {
           ) : null}
           {showNotifications ? (
             <View style={{ paddingBottom: 40 }}>
-              <Header title="Notification Center" action="✕" onPress={() => setShowNotifications(false)} />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Header
+                title="Notification Center"
+                action="✕"
+                onPress={() => setShowNotifications(false)}
+              />
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 20,
+                }}
+              >
                 <Text style={styles.sectionTitle}>Recent Alerts</Text>
-                <TouchableOpacity
-                  onPress={async () => {
-                    try {
-                      const data = await api.listRecentNotifications();
-                      setNotifications(data);
-                    } catch {}
-                  }}
-                  style={{ backgroundColor: C.purpleSoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}
-                >
-                  <Text style={{ color: C.purpleDark, fontWeight: '700', fontSize: 12 }}>Refresh</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      try {
+                        const data = await api.listRecentNotifications();
+                        setNotifications(data);
+                      } catch {}
+                    }}
+                    style={{
+                      backgroundColor: C.purpleSoft,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Text style={{ color: C.purpleDark, fontWeight: '700', fontSize: 12 }}>
+                      Refresh
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      try {
+                        await api.clearNotifications();
+                        setNotifications([]);
+                      } catch {}
+                    }}
+                    style={{
+                      backgroundColor: '#FEE2E2',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Text style={{ color: '#EF4444', fontWeight: '700', fontSize: 12 }}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {!notifications.length ? (
                 <View style={styles.emptyCard}>
                   <Text style={styles.emptyTitle}>No notifications</Text>
-                  <Text style={styles.emptyCopy}>All caught up! Active alerts will appear here.</Text>
+                  <Text style={styles.emptyCopy}>
+                    All caught up! Active alerts will appear here.
+                  </Text>
                 </View>
               ) : (
-                notifications.map(n => (
-                  <View key={n.id} style={[styles.eventCard, { borderLeftWidth: 4, borderLeftColor: n.type === 'sleep_timer' ? '#48BB78' : '#ED8936' }]}>
-                    <View style={styles.eventIcon}>
-                      <Text style={styles.purpleText}>
-                        {n.type === 'sleep_timer' ? '☾' : n.type === 'feed_gap' ? '♙' : '♢'}
-                      </Text>
-                    </View>
-                    <View style={styles.eventBody}>
-                      <Text style={styles.eventTitle}>{n.title}</Text>
-                      <Text style={{ fontSize: 13, color: C.ink, marginTop: 2 }}>{n.body}</Text>
-                      <Text style={styles.eventMeta}>
-                        {new Date(n.sent_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-                      </Text>
-                    </View>
-                  </View>
+                notifications.map((n) => (
+                  <SwipeableNotification
+                    key={n.id}
+                    notification={n}
+                    onDismiss={async () => {
+                      try {
+                        await api.deleteNotification(n.id);
+                      } catch {}
+                      setNotifications((prev) => prev.filter((x) => x.id !== n.id));
+                    }}
+                  />
                 ))
               )}
-              
+
               <TouchableOpacity
                 onPress={() => setShowNotifications(false)}
                 style={[styles.logButton, { marginTop: 20, backgroundColor: '#ECECEC' }]}
@@ -517,6 +570,7 @@ export default function App() {
                   setHeightInput={setHeightInput}
                   breastSide={breastSide}
                   setBreastSide={setBreastSide}
+                  onPressHeaderAction={() => setShowLogMenu(true)}
                 />
               )}
               {tab === 'growth' && (
@@ -528,7 +582,16 @@ export default function App() {
                   onRefreshData={() => void loadData(false)}
                 />
               )}
-              {tab === 'history' && <HistoryScreen events={events} />}
+              {tab === 'history' && (
+                <HistoryScreen
+                  events={events}
+                  feedings={feedings}
+                  sleepSessions={sleep}
+                  diapers={diapers}
+                  onRefreshData={loadData}
+                  onBack={() => setTab(previousTab)}
+                />
+              )}
               {tab === 'insights' && (
                 <InsightsScreen
                   baby={baby}
@@ -543,17 +606,411 @@ export default function App() {
             </>
           )}
         </ScrollView>
-        <BottomNav active={tab} onChange={setTab} />
+        {!showNotifications && (
+          <BottomNav
+            active={tab}
+            onChange={(newTab) => {
+              if (newTab === 'history') setPreviousTab(tab);
+              setTab(newTab);
+            }}
+          />
+        )}
       </View>
+
+      {/* Log Options Menu Modal */}
+      <Modal
+        visible={showLogMenu}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowLogMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLogMenu(false)}
+        >
+          <View style={styles.menuContainer}>
+            <View style={styles.menuHeader}>
+              <Text style={styles.menuTitle}>Log Options</Text>
+              <TouchableOpacity onPress={() => setShowLogMenu(false)} style={styles.menuCloseBtn}>
+                <Text style={{ fontSize: 16, color: C.muted, fontWeight: '700' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowLogMenu(false);
+                setPreviousTab(tab);
+                setTab('history');
+              }}
+            >
+              <View style={styles.menuIconCircle}>
+                <Text style={styles.menuIcon}>◴</Text>
+              </View>
+              <Text style={styles.menuItemText}>View History</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuItem, { borderBottomWidth: 0 }]}
+              onPress={() => {
+                setShowLogMenu(false);
+                setShowDeletedModal(true);
+              }}
+            >
+              <View style={[styles.menuIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                <Text style={[styles.menuIcon, { color: '#EF4444' }]}>🗑</Text>
+              </View>
+              <Text style={styles.menuItemText}>Deleted Activities</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <DeletedActivitiesModal
+        visible={showDeletedModal}
+        onClose={() => setShowDeletedModal(false)}
+        baby={baby}
+        unitSystem={unitSystem}
+        onRestore={loadData}
+      />
     </SafeAreaView>
   );
 }
 
-function Header({ title, action = '⋮', onPress }: { title: string; action?: React.ReactNode; onPress?: () => void }) {
+function SwipeableNotification({
+  notification,
+  onDismiss,
+}: {
+  notification: NotificationEntry;
+  onDismiss: () => void;
+}) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+  const SWIPE_THRESHOLD = 80;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dx) > 8 && Math.abs(gestureState.dy) < 20,
+      onPanResponderMove: (_, gestureState) => {
+        translateX.setValue(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
+          // Swipe passed threshold — dismiss
+          Animated.parallel([
+            Animated.timing(translateX, {
+              toValue: gestureState.dx > 0 ? 500 : -500,
+              duration: 220,
+              useNativeDriver: true,
+            }),
+            Animated.timing(opacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(onDismiss);
+        } else {
+          // Snap back
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 80,
+            friction: 8,
+          }).start();
+        }
+      },
+    }),
+  ).current;
+
+  return (
+    <Animated.View style={[{ transform: [{ translateX }], opacity }]} {...panResponder.panHandlers}>
+      <View
+        style={[
+          styles.eventCard,
+          {
+            borderLeftWidth: 4,
+            borderLeftColor: notification.type === 'sleep_timer' ? '#48BB78' : '#ED8936',
+          },
+        ]}
+      >
+        <View style={styles.eventIcon}>
+          <Text style={styles.purpleText}>
+            {notification.type === 'sleep_timer'
+              ? '☾'
+              : notification.type === 'feed_gap'
+                ? '♙'
+                : '♢'}
+          </Text>
+        </View>
+        <View style={styles.eventBody}>
+          <Text style={styles.eventTitle}>{notification.title}</Text>
+          <Text style={{ fontSize: 13, color: C.ink, marginTop: 2 }}>{notification.body}</Text>
+          <Text style={styles.eventMeta}>
+            {new Date(notification.sent_at).toLocaleTimeString(undefined, {
+              hour: 'numeric',
+              minute: '2-digit',
+            })}
+          </Text>
+        </View>
+        <Text style={{ fontSize: 11, color: '#BFBFBF', paddingLeft: 4 }}>⟵⟶</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+function DeletedActivitiesModal({
+  visible,
+  onClose,
+  baby,
+  unitSystem,
+  onRestore,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  baby: Baby | null;
+  unitSystem: 'metric' | 'imperial';
+  onRestore: () => Promise<void>;
+}) {
+  const [deletedData, setDeletedData] = useState<{
+    feedings: Feeding[];
+    sleep: SleepSession[];
+    diapers: DiaperChange[];
+    growth: GrowthRecord[];
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDeleted = async () => {
+    if (!baby) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.listDeletedActivities(baby.id);
+      setDeletedData(data);
+    } catch {
+      setError('Could not fetch deleted activities.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (visible) {
+      void fetchDeleted();
+    }
+  }, [visible, baby]);
+
+  const deletedEvents = useMemo(() => {
+    if (!deletedData) return [];
+    const { feedings, sleep, diapers, growth } = deletedData;
+
+    const feedingEvents = feedings.map((item) => ({
+      id: `feed-${item.id}`,
+      kind: 'feed' as const,
+      icon: activityMeta.feed.icon,
+      title: `${capitalize(item.type)} Feed`,
+      occurredAt: item.start_time,
+      note: `${item.breast_side ? `Side: ${item.breast_side} · ` : ''}${item.quantity_ml ? `${item.quantity_ml} ml · ` : ''}${item.duration_minutes} min${item.notes ? ` · ${item.notes}` : ''}`,
+      deletedAt: item.deleted_at,
+    }));
+
+    const sleepEvents = sleep.map((item) => ({
+      id: `sleep-${item.id}`,
+      kind: 'sleep' as const,
+      icon: activityMeta.sleep.icon,
+      title: item.tracking_method === 'night' ? 'Night Sleep' : 'Sleep Session',
+      occurredAt: item.sleep_start,
+      note: `${item.duration_minutes ?? 0} min${item.notes ? ` · ${item.notes}` : ''}`,
+      deletedAt: item.deleted_at,
+    }));
+
+    const diaperEvents = diapers.map((item) => ({
+      id: `diaper-${item.id}`,
+      kind: 'diaper' as const,
+      icon: activityMeta.diaper.icon,
+      title: `${capitalize(item.type)} Diaper`,
+      occurredAt: item.changed_at,
+      note: item.notes || 'Changed and all clean',
+      deletedAt: item.deleted_at,
+    }));
+
+    const growthEvents = growth.map((item) => {
+      let detailStr = '';
+      if (item.weight_kg) {
+        if (unitSystem === 'metric') {
+          detailStr += `Weight: ${item.weight_kg} kg`;
+        } else {
+          const lbs = (item.weight_kg * 2.20462).toFixed(2);
+          detailStr += `Weight: ${lbs} lbs`;
+        }
+      }
+      if (item.height_cm) {
+        if (detailStr) detailStr += ' · ';
+        if (unitSystem === 'metric') {
+          detailStr += `Height: ${item.height_cm} cm`;
+        } else {
+          const inches = (item.height_cm / 2.54).toFixed(1);
+          detailStr += `Height: ${inches} in`;
+        }
+      }
+      if (item.notes) {
+        if (detailStr) detailStr += ' · ';
+        detailStr += item.notes;
+      }
+      return {
+        id: `growth-${item.id}`,
+        kind: 'growth' as const,
+        icon: activityMeta.growth.icon,
+        title: 'Growth Entry',
+        occurredAt: item.recorded_at,
+        note: detailStr || 'Logged growth',
+        deletedAt: item.deleted_at,
+      };
+    });
+
+    return [...feedingEvents, ...sleepEvents, ...diaperEvents, ...growthEvents].sort(
+      (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt),
+    );
+  }, [deletedData, unitSystem]);
+
+  const handleRestore = async (eventId: string) => {
+    const delimiterIdx = eventId.indexOf('-');
+    if (delimiterIdx === -1) return;
+    const kind = eventId.substring(0, delimiterIdx);
+    const dbIdStr = eventId.substring(delimiterIdx + 1);
+    const dbId = parseInt(dbIdStr, 10);
+    if (isNaN(dbId)) return;
+
+    try {
+      await api.restoreActivity(kind, dbId);
+      await fetchDeleted();
+      await onRestore();
+    } catch {
+      Alert.alert('Error', 'Could not restore activity.');
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View
+          style={[
+            styles.menuContainer,
+            {
+              maxWidth: 500,
+              maxHeight: '80%',
+              padding: 20,
+            },
+          ]}
+        >
+          <View style={styles.menuHeader}>
+            <Text style={[styles.menuTitle, { fontSize: 18 }]}>Deleted Activities</Text>
+            <TouchableOpacity onPress={onClose} style={styles.menuCloseBtn}>
+              <Text style={{ fontSize: 16, color: C.muted, fontWeight: '700' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={{ fontSize: 12, color: C.muted, marginBottom: 16, paddingHorizontal: 4 }}>
+            Activities deleted within the last 24 hours are stored here. Restored activities go back
+            to history.
+          </Text>
+
+          {loading && (
+            <ActivityIndicator size="small" color={C.purple} style={{ marginVertical: 20 }} />
+          )}
+
+          {error && (
+            <Text style={{ color: '#EF4444', textAlign: 'center', marginVertical: 10 }}>
+              {error}
+            </Text>
+          )}
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            {!loading && deletedEvents.length === 0 ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: C.muted }}>
+                  No deleted activities
+                </Text>
+                <Text style={{ fontSize: 12, color: C.muted, textAlign: 'center', marginTop: 8 }}>
+                  Deleted logs from the past 24 hours will appear here.
+                </Text>
+              </View>
+            ) : (
+              deletedEvents.map((event) => (
+                <View
+                  key={event.id}
+                  style={[
+                    styles.eventCard,
+                    {
+                      borderWidth: 1,
+                      borderColor: '#E2E8F0',
+                    },
+                  ]}
+                >
+                  <View style={styles.eventIcon}>
+                    <Text style={styles.purpleText}>{event.icon}</Text>
+                  </View>
+                  <View style={styles.eventBody}>
+                    <Text style={styles.eventTitle}>{event.title}</Text>
+                    <Text style={styles.eventMeta}>
+                      {formatEventTime(event.occurredAt)} · {event.note}
+                    </Text>
+                    {event.deletedAt && (
+                      <Text style={{ fontSize: 9, color: '#EF4444', marginTop: 4 }}>
+                        Deleted:{' '}
+                        {new Date(event.deletedAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => void handleRestore(event.id)}
+                    style={{
+                      backgroundColor: C.purpleSoft,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 12,
+                      marginLeft: 8,
+                    }}
+                  >
+                    <Text style={{ color: C.purpleDark, fontWeight: '700', fontSize: 11 }}>
+                      Restore
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function Header({
+  title,
+  action = '⋮',
+  onPress,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  onPress?: () => void;
+}) {
   return (
     <View style={styles.header}>
       <Text style={styles.headerTitle}>{title}</Text>
-      <TouchableOpacity accessibilityLabel={title + " Action"} onPress={onPress} style={styles.headerAction}>
+      <TouchableOpacity
+        accessibilityLabel={title + ' Action'}
+        onPress={onPress}
+        style={styles.headerAction}
+      >
         {typeof action === 'string' ? (
           <Text style={styles.headerActionText}>{action}</Text>
         ) : (
@@ -658,7 +1115,9 @@ function HomeScreen({
                   borderColor: C.purple,
                 }}
               >
-                <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold' }}>{unreadCount}</Text>
+                <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold' }}>
+                  {unreadCount}
+                </Text>
               </View>
             )}
           </View>
@@ -738,6 +1197,7 @@ function LogScreen({
   setHeightInput,
   breastSide,
   setBreastSide,
+  onPressHeaderAction,
 }: {
   activity: Activity;
   setActivity: (value: Activity) => void;
@@ -771,6 +1231,7 @@ function LogScreen({
   setHeightInput: (value: string) => void;
   breastSide: 'Left' | 'Right';
   setBreastSide: (value: 'Left' | 'Right') => void;
+  onPressHeaderAction: () => void;
 }) {
   const options =
     activity === 'feed'
@@ -780,24 +1241,26 @@ function LogScreen({
         : ['Wet', 'Mixed', 'Dry'];
   return (
     <View>
-      <Header title="Quick Log" />
+      <Header title="Quick Log" onPress={onPressHeaderAction} />
       <View style={styles.activityTabs}>
-        {(Object.keys(activityMeta) as Activity[]).filter(key => key !== 'growth').map((key) => (
-          <TouchableOpacity
-            key={key}
-            onPress={() => setActivity(key)}
-            style={[styles.activityTab, activity === key && styles.activityTabActive]}
-          >
-            <View
-              style={[styles.smallIconCircle, activity === key && styles.smallIconCircleActive]}
+        {(Object.keys(activityMeta) as Activity[])
+          .filter((key) => key !== 'growth')
+          .map((key) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setActivity(key)}
+              style={[styles.activityTab, activity === key && styles.activityTabActive]}
             >
-              <Text>{activityMeta[key].icon}</Text>
-            </View>
-            <Text style={[styles.activityText, activity === key && styles.activityTextActive]}>
-              {activityMeta[key].label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <View
+                style={[styles.smallIconCircle, activity === key && styles.smallIconCircleActive]}
+              >
+                <Text>{activityMeta[key].icon}</Text>
+              </View>
+              <Text style={[styles.activityText, activity === key && styles.activityTextActive]}>
+                {activityMeta[key].label}
+              </Text>
+            </TouchableOpacity>
+          ))}
       </View>
 
       {activity === 'sleep' && (
@@ -832,7 +1295,11 @@ function LogScreen({
       {activity !== 'growth' && (
         <>
           <Text style={styles.sectionTitle}>
-            {activity === 'feed' ? 'Feed Type' : activity === 'sleep' ? 'Sleep Type' : 'Diaper Type'}
+            {activity === 'feed'
+              ? 'Feed Type'
+              : activity === 'sleep'
+                ? 'Sleep Type'
+                : 'Diaper Type'}
           </Text>
           <View style={styles.typeRow}>
             {options.map((type, index) => (
@@ -860,7 +1327,9 @@ function LogScreen({
             <Text style={styles.white}>{activityMeta[activity].icon}</Text>
           </View>
           <Text style={styles.trendTitle}>
-            {activity === 'growth' ? 'Growth Tracking' : `${activityMeta[activity].label}ing Trends`}
+            {activity === 'growth'
+              ? 'Growth Tracking'
+              : `${activityMeta[activity].label}ing Trends`}
           </Text>
         </View>
 
@@ -928,7 +1397,13 @@ function LogScreen({
                       style={[
                         styles.segment,
                         unitSystem === item.key && styles.segmentActive,
-                        { flex: 1, height: 38, minWidth: 0, paddingHorizontal: 0, borderRadius: 19 },
+                        {
+                          flex: 1,
+                          height: 38,
+                          minWidth: 0,
+                          paddingHorizontal: 0,
+                          borderRadius: 19,
+                        },
                       ]}
                     >
                       <Text
@@ -1006,7 +1481,13 @@ function LogScreen({
                             justifyContent: 'center',
                           }}
                         >
-                          <Text style={{ color: breastSide === side ? '#FFF' : C.muted, fontSize: 13, fontWeight: '700' }}>
+                          <Text
+                            style={{
+                              color: breastSide === side ? '#FFF' : C.muted,
+                              fontSize: 13,
+                              fontWeight: '700',
+                            }}
+                          >
                             {side}
                           </Text>
                         </TouchableOpacity>
@@ -1049,14 +1530,31 @@ function LogScreen({
                       marginRight: 8,
                     }}
                   >
-                    {customTimeEnabled && <Text style={{ color: '#FFF', fontSize: 11, fontWeight: 'bold' }}>✓</Text>}
+                    {customTimeEnabled && (
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: 'bold' }}>✓</Text>
+                    )}
                   </View>
-                  <Text style={{ fontSize: 14, color: C.ink, fontWeight: '600' }}>Set time of activity</Text>
+                  <Text style={{ fontSize: 14, color: C.ink, fontWeight: '600' }}>
+                    Set time of activity
+                  </Text>
                 </TouchableOpacity>
 
                 {customTimeEnabled && (
-                  <View style={{ backgroundColor: '#F8F8F8', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#EEE', marginBottom: 10 }}>
-                    <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600', marginBottom: 4 }}>Start Time (HH:MM)</Text>
+                  <View
+                    style={{
+                      backgroundColor: '#F8F8F8',
+                      borderRadius: 8,
+                      padding: 12,
+                      borderWidth: 1,
+                      borderColor: '#EEE',
+                      marginBottom: 10,
+                    }}
+                  >
+                    <Text
+                      style={{ fontSize: 12, color: C.muted, fontWeight: '600', marginBottom: 4 }}
+                    >
+                      Start Time (HH:MM)
+                    </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <TextInput
                         value={customTime}
@@ -1065,15 +1563,15 @@ function LogScreen({
                         placeholderTextColor="#A9A9A9"
                         style={[styles.input, { flex: 1, height: 40, marginBottom: 0 }]}
                       />
-                      
+
                       {/* Offset Helpers */}
                       <View style={{ flexDirection: 'row', marginLeft: 8 }}>
                         {[
                           { label: '-5m', val: 5 },
                           { label: '-15m', val: 15 },
                           { label: '-30m', val: 30 },
-                          { label: '-1h', val: 60 }
-                        ].map(offset => (
+                          { label: '-1h', val: 60 },
+                        ].map((offset) => (
                           <TouchableOpacity
                             key={offset.label}
                             onPress={() => {
@@ -1090,7 +1588,9 @@ function LogScreen({
                               marginLeft: 4,
                             }}
                           >
-                            <Text style={{ color: C.purpleDark, fontSize: 11, fontWeight: '700' }}>{offset.label}</Text>
+                            <Text style={{ color: C.purpleDark, fontSize: 11, fontWeight: '700' }}>
+                              {offset.label}
+                            </Text>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -1127,45 +1627,631 @@ function LogScreen({
   );
 }
 
+function HistoryScreen({
+  events,
+  feedings,
+  sleepSessions,
+  diapers,
+  onRefreshData,
+  onBack,
+}: {
+  events: TimelineEvent[];
+  feedings: Feeding[];
+  sleepSessions: SleepSession[];
+  diapers: DiaperChange[];
+  onRefreshData: () => Promise<void>;
+  onBack: () => void;
+}) {
+  const recent = useMemo(
+    () => events.filter((e) => e.kind !== 'growth').slice(0, 20),
+    [events],
+  );
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activeGraph, setActiveGraph] = useState<'feed' | 'sleep' | 'diaper'>('feed');
+  // For sleep swipeable (0 = timeline, 1 = weekly bar chart)
+  const [sleepView, setSleepView] = useState<0 | 1>(0);
+  const sleepSwipeX = useRef(new Animated.Value(0)).current;
+  const sleepPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 12 && Math.abs(g.dy) < 20,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx < -40) {
+          setSleepView(1);
+        } else if (g.dx > 40) {
+          setSleepView(0);
+        }
+        Animated.spring(sleepSwipeX, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
+      },
+      onPanResponderMove: (_, g) => sleepSwipeX.setValue(g.dx),
+    }),
+  ).current;
 
+  useEffect(() => {
+    void onRefreshData();
+  }, []);
 
-function HistoryScreen({ events }: { events: TimelineEvent[] }) {
-  const recent = useMemo(() => events.slice(0, 12), [events]);
-  const counts = {
-    feed: events.filter((event) => event.kind === 'feed').length,
-    sleep: events.filter((event) => event.kind === 'sleep').length,
-    diaper: events.filter((event) => event.kind === 'diaper').length,
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const today = new Date();
+  const dayStart = (offsetDays: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - offsetDays);
+    d.setHours(0, 0, 0, 0);
+    return d;
   };
+  const dayEnd = (offsetDays: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - offsetDays);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  };
+  const DAY_LABELS = Array.from({ length: 7 }, (_, i) => {
+    const d = dayStart(6 - i);
+    return d.toLocaleDateString(undefined, { weekday: 'short' });
+  });
+
+  // ── Feed graph data (7 days, breast ml estimated 120ml/session) ─────────────
+  const feedChartData = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const offset = 6 - i;
+      const ds = dayStart(offset);
+      const de = dayEnd(offset);
+      const dayFeedings = feedings.filter((f) => {
+        const t = new Date(f.start_time).getTime();
+        return t >= ds.getTime() && t <= de.getTime();
+      });
+      const bottleMl = dayFeedings
+        .filter((f) => f.type === 'bottle')
+        .reduce((s, f) => s + (f.quantity_ml ?? 0), 0);
+      const breastMl = dayFeedings
+        .filter((f) => f.type === 'breast')
+        .reduce((s, f) => s + (f.duration_minutes ?? 0) * 4, 0); // ~4ml/min estimate
+      return { bottleMl, breastMl, total: bottleMl + breastMl };
+    });
+  }, [feedings]);
+  const feedMax = Math.max(...feedChartData.map((d) => d.total), 1);
+
+  // ── Sleep graph data ────────────────────────────────────────────────────────
+  // Today's sessions for timeline
+  const todaySleepSessions = useMemo(() => {
+    const ds = dayStart(0);
+    const de = dayEnd(0);
+    return sleepSessions.filter((s) => {
+      const t = new Date(s.sleep_start).getTime();
+      return t >= ds.getTime() && t <= de.getTime();
+    });
+  }, [sleepSessions]);
+
+  // 7-day weekly sleep data
+  const sleepChartData = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const offset = 6 - i;
+      const ds = dayStart(offset);
+      const de = dayEnd(offset);
+      const daySessions = sleepSessions.filter((s) => {
+        const t = new Date(s.sleep_start).getTime();
+        return t >= ds.getTime() && t <= de.getTime();
+      });
+      const nightMins = daySessions
+        .filter((s) => s.tracking_method === 'night')
+        .reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0);
+      const napMins = daySessions
+        .filter((s) => s.tracking_method !== 'night')
+        .reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0);
+      return { nightMins, napMins, totalMins: nightMins + napMins };
+    });
+  }, [sleepSessions]);
+  const sleepMax = Math.max(...sleepChartData.map((d) => d.totalMins), 1);
+
+  // ── Diaper data ─────────────────────────────────────────────────────────────
+  const diaperTodayData = useMemo(() => {
+    const ds = dayStart(0);
+    const de = dayEnd(0);
+    const todayDiapers = diapers.filter((d) => {
+      const t = new Date(d.changed_at).getTime();
+      return t >= ds.getTime() && t <= de.getTime();
+    });
+    const sorted = [...todayDiapers].sort(
+      (a, b) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime(),
+    );
+    return {
+      count: todayDiapers.length,
+      wet: todayDiapers.filter((d) => d.type === 'wet').length,
+      dirty: todayDiapers.filter((d) => d.type === 'dirty' || d.type === 'both').length,
+      lastChange: sorted[0]?.changed_at ?? null,
+    };
+  }, [diapers]);
+
+  // ── Counts for today ────────────────────────────────────────────────────────
+  const counts = useMemo(() => {
+    const ds = dayStart(0);
+    const de = dayEnd(0);
+    return {
+      feed: feedings.filter((f) => {
+        const t = new Date(f.start_time).getTime();
+        return t >= ds.getTime() && t <= de.getTime();
+      }).length,
+      sleep: sleepSessions.filter((s) => {
+        const t = new Date(s.sleep_start).getTime();
+        return t >= ds.getTime() && t <= de.getTime();
+      }).length,
+      diaper: diapers.filter((d) => {
+        const t = new Date(d.changed_at).getTime();
+        return t >= ds.getTime() && t <= de.getTime();
+      }).length,
+    };
+  }, [feedings, sleepSessions, diapers]);
+
+  // ── Event handlers ──────────────────────────────────────────────────────────
+  const handleLongPress = (id: string) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter((x) => x !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const handlePress = (id: string) => {
+    if (selectedIds.length > 0) {
+      handleLongPress(id);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    const confirmMsg = `Are you sure you want to delete the ${selectedIds.length} selected activities?`;
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMsg)) {
+        void executeDelete();
+      }
+    } else {
+      Alert.alert('Confirm Delete', confirmMsg, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => void executeDelete(),
+        },
+      ]);
+    }
+  };
+
+  const executeDelete = async () => {
+    try {
+      await Promise.all(
+        selectedIds.map(async (selectedId) => {
+          const delimiterIdx = selectedId.indexOf('-');
+          if (delimiterIdx === -1) return;
+          const kind = selectedId.substring(0, delimiterIdx);
+          const dbIdStr = selectedId.substring(delimiterIdx + 1);
+          const dbId = parseInt(dbIdStr, 10);
+          if (isNaN(dbId)) return;
+
+          if (kind === 'feed') {
+            await api.deleteFeeding(dbId);
+          } else if (kind === 'sleep') {
+            await api.deleteSleep(dbId);
+          } else if (kind === 'diaper') {
+            await api.deleteDiaper(dbId);
+          } else if (kind === 'growth') {
+            await api.deleteGrowth(dbId);
+          }
+        }),
+      );
+      setSelectedIds([]);
+      await onRefreshData();
+    } catch {
+      if (Platform.OS === 'web') {
+        alert('Failed to delete some activities. Please check connection and try again.');
+      } else {
+        Alert.alert(
+          'Error',
+          'Failed to delete some activities. Please check connection and try again.',
+        );
+      }
+    }
+  };
+
+  // ── Sleep timeline helpers ─────────────────────────────────────────────────
+  const timeToPercent = (iso: string) => {
+    const d = new Date(iso);
+    return (d.getHours() * 60 + d.getMinutes()) / (24 * 60);
+  };
+
+  const formatDuration = (mins: number) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    return `${m}m`;
+  };
+
+  const formatTime12 = (iso: string) => {
+    return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <View>
-      <Header title="History" action="▽" />
-      <Text style={styles.sectionTitle}>Today Timeline</Text>
+      {/* ── Header ── */}
+      {selectedIds.length > 0 ? (
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: C.purpleSoft, paddingRight: 10 },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => setSelectedIds([])}
+            style={{ paddingVertical: 8, paddingHorizontal: 4 }}
+          >
+            <Text style={{ color: C.purpleDark, fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: C.purpleDark, fontWeight: '800' }]}>
+            {selectedIds.length} Selected
+          </Text>
+          <TouchableOpacity
+            onPress={handleDeleteSelected}
+            style={{
+              backgroundColor: '#EF4444',
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 20,
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={[styles.header, { paddingRight: 6 }]}>
+          <Text style={styles.headerTitle}>History</Text>
+          <TouchableOpacity
+            accessibilityLabel="Go back"
+            onPress={onBack}
+            style={[styles.headerAction, { backgroundColor: '#EFEFEF' }]}
+          >
+            <Text style={{ fontSize: 18, color: C.ink, fontWeight: '700' }}>←</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Stat Chip Buttons ── */}
+      <Text style={styles.sectionTitle}>Today's Summary</Text>
       <View style={styles.chips}>
-        {[`${counts.feed} feeds`, `${counts.sleep} sleep sessions`, `${counts.diaper} diapers`].map(
-          (chip) => (
-            <React.Fragment key={chip}>
-              <View style={styles.chip}>
-                <Text style={styles.chipText}>{chip}</Text>
+        {(
+          [
+            { key: 'feed', label: `${counts.feed} feed${counts.feed !== 1 ? 's' : ''}`, icon: '🍼' },
+            { key: 'sleep', label: `${counts.sleep} sleep session${counts.sleep !== 1 ? 's' : ''}`, icon: '😴' },
+            { key: 'diaper', label: `${counts.diaper} diaper${counts.diaper !== 1 ? 's' : ''}`, icon: '🧷' },
+          ] as { key: 'feed' | 'sleep' | 'diaper'; label: string; icon: string }[]
+        ).map((chip) => (
+          <TouchableOpacity
+            key={chip.key}
+            onPress={() => setActiveGraph(chip.key)}
+            style={[
+              styles.chip,
+              activeGraph === chip.key && {
+                backgroundColor: C.purple,
+                shadowColor: C.purple,
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 4,
+              },
+            ]}
+          >
+            <Text style={[styles.chipText, activeGraph === chip.key && { color: '#FFF', fontWeight: '700' }]}>
+              {chip.icon} {chip.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ── FEED GRAPH ── */}
+      {activeGraph === 'feed' && (
+        <View
+          style={[
+            styles.historyChart,
+            { height: 240, backgroundColor: '#FFF7ED', padding: 16, paddingBottom: 10 },
+          ]}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '800', color: '#9A3412', marginBottom: 4 }}>
+            🍼 Feed — ml consumed per day
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#C45BF2' }} />
+              <Text style={{ fontSize: 10, color: C.muted }}>Bottle</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#F9A8D4' }} />
+              <Text style={{ fontSize: 10, color: C.muted }}>Breast (est.)</Text>
+            </View>
+          </View>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
+            {feedChartData.map((d, i) => {
+              const barMaxH = 110;
+              const totalH = feedMax > 0 ? (d.total / feedMax) * barMaxH : 0;
+              const bottleH = d.total > 0 ? (d.bottleMl / d.total) * totalH : 0;
+              const breastH = totalH - bottleH;
+              return (
+                <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 8, color: C.muted, marginBottom: 2 }}>
+                    {d.total > 0 ? `${d.total}` : ''}
+                  </Text>
+                  <View style={{ width: '100%', height: totalH, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end' }}>
+                    <View style={{ height: bottleH, backgroundColor: C.purple }} />
+                    <View style={{ height: breastH, backgroundColor: '#F9A8D4' }} />
+                  </View>
+                  <Text style={{ fontSize: 9, color: C.muted, marginTop: 4 }}>{DAY_LABELS[i]}</Text>
+                </View>
+              );
+            })}
+          </View>
+          {feedMax === 1 && (
+            <Text style={{ fontSize: 11, color: C.muted, textAlign: 'center', marginTop: 6 }}>
+              No bottle or breast data yet — log a feed to see trends.
+            </Text>
+          )}
+        </View>
+      )}
+
+      {/* ── SLEEP GRAPH ── */}
+      {activeGraph === 'sleep' && (
+        <View
+          style={[
+            styles.historyChart,
+            { minHeight: 220, backgroundColor: '#EEF2FF', padding: 14, paddingBottom: 12 },
+          ]}
+        >
+          {/* Swipe hint dots */}
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 10 }}>
+            {[0, 1].map((idx) => (
+              <TouchableOpacity key={idx} onPress={() => setSleepView(idx as 0 | 1)}>
+                <View
+                  style={{
+                    width: sleepView === idx ? 18 : 7,
+                    height: 7,
+                    borderRadius: 4,
+                    backgroundColor: sleepView === idx ? '#6366F1' : '#C7D2FE',
+                  }}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Animated.View
+            style={{ transform: [{ translateX: sleepSwipeX }] }}
+            {...sleepPanResponder.panHandlers}
+          >
+            {sleepView === 0 ? (
+              /* ── TODAY'S TIMELINE ── */
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#3730A3', marginBottom: 8 }}>
+                  😴 Today's Sleep Timeline
+                </Text>
+                {/* Time axis labels */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  {['12 AM', '6 AM', '12 PM', '6 PM', '12 AM'].map((lbl, idx) => (
+                    <Text key={idx} style={{ fontSize: 9, color: '#9CA3AF' }}>{lbl}</Text>
+                  ))}
+                </View>
+                {/* Timeline bar track */}
+                <View style={{ height: 8, backgroundColor: '#E0E7FF', borderRadius: 4, marginBottom: 10 }}>
+                  {todaySleepSessions.map((s, idx) => {
+                    const startPct = timeToPercent(s.sleep_start);
+                    const endPct = s.sleep_end ? timeToPercent(s.sleep_end) : Math.min(startPct + 0.03, 1);
+                    const width = Math.max(endPct - startPct, 0.02);
+                    const isNight = s.tracking_method === 'night';
+                    return (
+                      <View
+                        key={idx}
+                        style={{
+                          position: 'absolute',
+                          left: `${startPct * 100}%` as unknown as number,
+                          width: `${width * 100}%` as unknown as number,
+                          top: 0,
+                          bottom: 0,
+                          backgroundColor: isNight ? '#4F46E5' : '#A5B4FC',
+                          borderRadius: 4,
+                        }}
+                      />
+                    );
+                  })}
+                </View>
+                {/* Legend */}
+                <View style={{ flexDirection: 'row', gap: 14, marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#4F46E5' }} />
+                    <Text style={{ fontSize: 10, color: C.muted }}>Night</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#A5B4FC' }} />
+                    <Text style={{ fontSize: 10, color: C.muted }}>Nap</Text>
+                  </View>
+                </View>
+                {/* Session list */}
+                {todaySleepSessions.length === 0 ? (
+                  <Text style={{ fontSize: 12, color: C.muted, textAlign: 'center', paddingVertical: 8 }}>
+                    No sleep logged today yet.
+                  </Text>
+                ) : (
+                  todaySleepSessions.map((s, idx) => {
+                    const isNight = s.tracking_method === 'night';
+                    return (
+                      <View
+                        key={idx}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 8,
+                          paddingVertical: 4,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 2,
+                            backgroundColor: isNight ? '#4F46E5' : '#A5B4FC',
+                          }}
+                        />
+                        <Text style={{ fontSize: 12, color: '#3730A3', fontWeight: '600', flex: 1 }}>
+                          {isNight ? 'Night Sleep' : `Nap ${idx + 1}`}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: C.muted }}>
+                          {formatTime12(s.sleep_start)}
+                          {s.sleep_end ? ` → ${formatTime12(s.sleep_end)}` : ''}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#6366F1', fontWeight: '700' }}>
+                          {s.duration_minutes ? formatDuration(s.duration_minutes) : '—'}
+                        </Text>
+                      </View>
+                    );
+                  })
+                )}
+                <Text style={{ fontSize: 10, color: '#9CA3AF', textAlign: 'center', marginTop: 8 }}>
+                  ← Swipe left for weekly view →
+                </Text>
               </View>
-            </React.Fragment>
-          ),
-        )}
-      </View>
-      <View style={styles.historyChart}>
-        <View style={styles.averageLine}>
-          <View style={styles.averageDot} />
-          <Text style={styles.averageText}>1 Day Avg.</Text>
+            ) : (
+              /* ── WEEKLY SLEEP BAR CHART ── */
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#3730A3', marginBottom: 6 }}>
+                  😴 Total Sleep — last 7 days
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#4F46E5' }} />
+                    <Text style={{ fontSize: 10, color: C.muted }}>Night</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#A5B4FC' }} />
+                    <Text style={{ fontSize: 10, color: C.muted }}>Nap</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 110 }}>
+                  {sleepChartData.map((d, i) => {
+                    const barMaxH = 90;
+                    const totalH = sleepMax > 0 ? (d.totalMins / sleepMax) * barMaxH : 0;
+                    const nightH = d.totalMins > 0 ? (d.nightMins / d.totalMins) * totalH : 0;
+                    const napH = totalH - nightH;
+                    return (
+                      <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 8, color: C.muted, marginBottom: 2 }}>
+                          {d.totalMins > 0 ? formatDuration(d.totalMins) : ''}
+                        </Text>
+                        <View style={{ width: '100%', height: totalH, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end' }}>
+                          <View style={{ height: napH, backgroundColor: '#A5B4FC' }} />
+                          <View style={{ height: nightH, backgroundColor: '#4F46E5' }} />
+                        </View>
+                        <Text style={{ fontSize: 9, color: C.muted, marginTop: 4 }}>{DAY_LABELS[i]}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+                <Text style={{ fontSize: 10, color: '#9CA3AF', textAlign: 'center', marginTop: 8 }}>
+                  ← Swipe right for today's timeline
+                </Text>
+              </View>
+            )}
+          </Animated.View>
         </View>
-        <View style={styles.historyBars}>
-          {[52, 86, 130, 60, 100, 72].map((h, i) => (
-            <React.Fragment key={i}>
+      )}
+
+      {/* ── DIAPER GRAPH ── */}
+      {activeGraph === 'diaper' && (
+        <View
+          style={[
+            styles.historyChart,
+            { minHeight: 180, backgroundColor: '#F0FDF4', padding: 16, paddingBottom: 16 },
+          ]}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '800', color: '#14532D', marginBottom: 14 }}>
+            🧷 Diapers — Today
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+            {/* Total count */}
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: '#DCFCE7',
+                borderRadius: 16,
+                padding: 14,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 36, fontWeight: '900', color: '#16A34A' }}>
+                {diaperTodayData.count}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#166534', fontWeight: '700' }}>Total</Text>
+            </View>
+            <View style={{ flex: 1, gap: 8 }}>
+              {/* Wet */}
               <View
-                style={[styles.historyBar, { height: h }, i === 2 && styles.historyBarActive]}
-              />
-            </React.Fragment>
-          ))}
+                style={{
+                  flex: 1,
+                  backgroundColor: '#DBEAFE',
+                  borderRadius: 12,
+                  padding: 10,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  gap: 6,
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>💧</Text>
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#1D4ED8' }}>
+                    {diaperTodayData.wet}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: '#1E40AF' }}>Wet</Text>
+                </View>
+              </View>
+              {/* Dirty */}
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: '#FEF9C3',
+                  borderRadius: 12,
+                  padding: 10,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  gap: 6,
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>💛</Text>
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#92400E' }}>
+                    {diaperTodayData.dirty}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: '#78350F' }}>Dirty / Both</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          {/* Last change */}
+          <View
+            style={{
+              backgroundColor: '#BBF7D0',
+              borderRadius: 14,
+              padding: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <Text style={{ fontSize: 20 }}>🕐</Text>
+            <View>
+              <Text style={{ fontSize: 11, color: '#166534', fontWeight: '600' }}>Last Change</Text>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: '#14532D' }}>
+                {diaperTodayData.lastChange
+                  ? formatTime12(diaperTodayData.lastChange)
+                  : 'No changes today'}
+              </Text>
+            </View>
+          </View>
         </View>
-      </View>
+      )}
+
+      {/* ── Recent Activity ── */}
       <Text style={styles.sectionTitle}>Recent activity</Text>
       {!recent.length && (
         <View style={styles.emptyCard}>
@@ -1173,21 +2259,42 @@ function HistoryScreen({ events }: { events: TimelineEvent[] }) {
           <Text style={styles.emptyCopy}>Use Quick Log to save the first moment.</Text>
         </View>
       )}
-      {recent.map((event) => (
-        <React.Fragment key={event.id}>
-          <View style={styles.eventCard}>
-            <View style={styles.eventIcon}>
-              <Text style={styles.purpleText}>{event.icon}</Text>
-            </View>
-            <View style={styles.eventBody}>
-              <Text style={styles.eventTitle}>{event.title}</Text>
-              <Text style={styles.eventMeta}>
-                {formatEventTime(event.occurredAt)} · {event.note}
-              </Text>
-            </View>
-          </View>
-        </React.Fragment>
-      ))}
+      {recent.map((event) => {
+        const isSelected = selectedIds.includes(event.id);
+        return (
+          <React.Fragment key={event.id}>
+            <TouchableOpacity
+              onLongPress={() => handleLongPress(event.id)}
+              onPress={() => handlePress(event.id)}
+              delayLongPress={500}
+              activeOpacity={0.8}
+              style={[
+                styles.eventCard,
+                {
+                  borderWidth: 2,
+                  borderColor: isSelected ? C.purple : 'transparent',
+                  backgroundColor: isSelected ? C.purpleSoft : C.card,
+                },
+              ]}
+            >
+              <View style={styles.eventIcon}>
+                <Text style={styles.purpleText}>{event.icon}</Text>
+              </View>
+              <View style={styles.eventBody}>
+                <Text style={styles.eventTitle}>{event.title}</Text>
+                <Text style={styles.eventMeta}>
+                  {formatEventTime(event.occurredAt)} · {event.note}
+                </Text>
+              </View>
+              {isSelected && (
+                <View style={{ marginLeft: 8, marginRight: 4 }}>
+                  <Text style={{ fontSize: 16, color: C.purpleDark, fontWeight: '900' }}>✓</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </React.Fragment>
+        );
+      })}
     </View>
   );
 }
@@ -1264,17 +2371,37 @@ function InsightsScreen({
       <View style={styles.segmentRow}>
         <TouchableOpacity
           onPress={() => setInsightsTab('daily')}
-          style={[styles.segment, insightsTab === 'daily' && styles.segmentActive, { flex: 1, height: 42, minWidth: 0, paddingHorizontal: 0, borderRadius: 21 }]}
+          style={[
+            styles.segment,
+            insightsTab === 'daily' && styles.segmentActive,
+            { flex: 1, height: 42, minWidth: 0, paddingHorizontal: 0, borderRadius: 21 },
+          ]}
         >
-          <Text style={[styles.segmentText, insightsTab === 'daily' && styles.white, { fontSize: 13, fontWeight: '700' }]}>
+          <Text
+            style={[
+              styles.segmentText,
+              insightsTab === 'daily' && styles.white,
+              { fontSize: 13, fontWeight: '700' },
+            ]}
+          >
             Daily Insights
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setInsightsTab('weekly')}
-          style={[styles.segment, insightsTab === 'weekly' && styles.segmentActive, { flex: 1, height: 42, minWidth: 0, paddingHorizontal: 0, borderRadius: 21 }]}
+          style={[
+            styles.segment,
+            insightsTab === 'weekly' && styles.segmentActive,
+            { flex: 1, height: 42, minWidth: 0, paddingHorizontal: 0, borderRadius: 21 },
+          ]}
         >
-          <Text style={[styles.segmentText, insightsTab === 'weekly' && styles.white, { fontSize: 13, fontWeight: '700' }]}>
+          <Text
+            style={[
+              styles.segmentText,
+              insightsTab === 'weekly' && styles.white,
+              { fontSize: 13, fontWeight: '700' },
+            ]}
+          >
             Weekly Summary
           </Text>
         </TouchableOpacity>
@@ -1332,7 +2459,8 @@ function InsightsScreen({
           <View style={styles.askSectionCard}>
             <Text style={styles.askTitle}>Ask the AI Assistant</Text>
             <Text style={styles.askSubtitle}>
-              Ask any parenting question — Gemini will answer using {baby?.name ?? 'your baby'}'s logs.
+              Ask any parenting question — Gemini will answer using {baby?.name ?? 'your baby'}'s
+              logs.
             </Text>
             <View style={styles.askInputContainer}>
               <TextInput
@@ -1406,16 +2534,34 @@ function InsightsScreen({
           {weeklySummary && (
             <View style={{ gap: 12, marginTop: 14 }}>
               <View style={styles.insightMini}>
-                <Text style={{ fontSize: 16, fontWeight: '800', color: C.purpleDark, marginBottom: 6 }}>🍏 Feeding Analysis</Text>
-                <Text style={{ fontSize: 13, color: '#333', lineHeight: 18 }}>{weeklySummary.feeding_insights}</Text>
+                <Text
+                  style={{ fontSize: 16, fontWeight: '800', color: C.purpleDark, marginBottom: 6 }}
+                >
+                  🍏 Feeding Analysis
+                </Text>
+                <Text style={{ fontSize: 13, color: '#333', lineHeight: 18 }}>
+                  {weeklySummary.feeding_insights}
+                </Text>
               </View>
               <View style={styles.insightMini}>
-                <Text style={{ fontSize: 16, fontWeight: '800', color: C.purpleDark, marginBottom: 6 }}>☾ Sleep Analysis</Text>
-                <Text style={{ fontSize: 13, color: '#333', lineHeight: 18 }}>{weeklySummary.sleep_insights}</Text>
+                <Text
+                  style={{ fontSize: 16, fontWeight: '800', color: C.purpleDark, marginBottom: 6 }}
+                >
+                  ☾ Sleep Analysis
+                </Text>
+                <Text style={{ fontSize: 13, color: '#333', lineHeight: 18 }}>
+                  {weeklySummary.sleep_insights}
+                </Text>
               </View>
               <View style={styles.insightMini}>
-                <Text style={{ fontSize: 16, fontWeight: '800', color: C.purpleDark, marginBottom: 6 }}>⚖ Growth Analysis</Text>
-                <Text style={{ fontSize: 13, color: '#333', lineHeight: 18 }}>{weeklySummary.growth_insights}</Text>
+                <Text
+                  style={{ fontSize: 16, fontWeight: '800', color: C.purpleDark, marginBottom: 6 }}
+                >
+                  ⚖ Growth Analysis
+                </Text>
+                <Text style={{ fontSize: 13, color: '#333', lineHeight: 18 }}>
+                  {weeklySummary.growth_insights}
+                </Text>
               </View>
             </View>
           )}
@@ -1452,20 +2598,16 @@ function InsightsScreen({
   );
 }
 
-function MilestonesScreen({
-  baby,
-}: {
-  baby: Baby | null;
-}) {
+function MilestonesScreen({ baby }: { baby: Baby | null }) {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Custom Milestone Form State
   const [showAddCustom, setShowAddCustom] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customNotes, setCustomNotes] = useState('');
-  
+
   // Edit/Check modal state
   const [activeMilestoneName, setActiveMilestoneName] = useState<string | null>(null);
   const [activeMilestoneNotes, setActiveMilestoneNotes] = useState('');
@@ -1501,13 +2643,13 @@ function MilestonesScreen({
 
   const handleToggleCDC = async (name: string) => {
     if (!baby) return;
-    const existing = milestones.find(m => m.name.toLowerCase() === name.toLowerCase());
-    
+    const existing = milestones.find((m) => m.name.toLowerCase() === name.toLowerCase());
+
     if (existing) {
       // Uncheck / delete
       try {
         await api.deleteMilestone(existing.id);
-        setMilestones(prev => prev.filter(m => m.id !== existing.id));
+        setMilestones((prev) => prev.filter((m) => m.id !== existing.id));
       } catch {
         setError('Could not delete milestone.');
       }
@@ -1527,7 +2669,7 @@ function MilestonesScreen({
         achieved_at: new Date().toISOString().split('T')[0],
         notes: activeMilestoneNotes || null,
       });
-      setMilestones(prev => [...prev, created]);
+      setMilestones((prev) => [...prev, created]);
       setActiveMilestoneName(null);
       setActiveMilestoneNotes('');
     } catch {
@@ -1544,7 +2686,7 @@ function MilestonesScreen({
         achieved_at: new Date().toISOString().split('T')[0],
         notes: customNotes || null,
       });
-      setMilestones(prev => [...prev, created]);
+      setMilestones((prev) => [...prev, created]);
       setCustomName('');
       setCustomNotes('');
       setShowAddCustom(false);
@@ -1557,7 +2699,7 @@ function MilestonesScreen({
     <View style={{ paddingBottom: 40 }}>
       <Header title="Milestones" action="⚐" />
       <Text style={styles.heroTitle}>Celebrate the{`\n`}small steps.</Text>
-      
+
       {error && (
         <View style={styles.askErrorBox}>
           <Text style={styles.askErrorText}>{error}</Text>
@@ -1567,15 +2709,31 @@ function MilestonesScreen({
       {/* CDC Predefined Milestones */}
       <Text style={styles.sectionTitle}>Developmental Checklist</Text>
       <View style={{ backgroundColor: C.card, borderRadius: 24, padding: 18, marginBottom: 20 }}>
-        {defaultCDC.map(item => {
-          const matched = milestones.find(m => m.name.toLowerCase() === item.name.toLowerCase());
+        {defaultCDC.map((item) => {
+          const matched = milestones.find((m) => m.name.toLowerCase() === item.name.toLowerCase());
           return (
-            <View key={item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' }}>
+            <View
+              key={item.name}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: '#F0F0F0',
+              }}
+            >
               <View style={{ flex: 1, paddingRight: 10 }}>
                 <Text style={{ fontSize: 15, fontWeight: '700', color: C.ink }}>{item.name}</Text>
-                <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Typical age: {item.age}</Text>
+                <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                  Typical age: {item.age}
+                </Text>
                 {matched?.notes && (
-                  <Text style={{ fontSize: 12, color: C.purpleDark, fontStyle: 'italic', marginTop: 4 }}>Note: {matched.notes}</Text>
+                  <Text
+                    style={{ fontSize: 12, color: C.purpleDark, fontStyle: 'italic', marginTop: 4 }}
+                  >
+                    Note: {matched.notes}
+                  </Text>
                 )}
               </View>
               <TouchableOpacity
@@ -1591,7 +2749,9 @@ function MilestonesScreen({
                   justifyContent: 'center',
                 }}
               >
-                {matched && <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>✓</Text>}
+                {matched && (
+                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>✓</Text>
+                )}
               </TouchableOpacity>
             </View>
           );
@@ -1600,7 +2760,16 @@ function MilestonesScreen({
 
       {/* Inline notes dialog for checklist milestones */}
       {activeMilestoneName && (
-        <View style={{ backgroundColor: C.purpleSoft, borderRadius: 20, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#DDB8EE' }}>
+        <View
+          style={{
+            backgroundColor: C.purpleSoft,
+            borderRadius: 20,
+            padding: 16,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: '#DDB8EE',
+          }}
+        >
           <Text style={{ fontSize: 15, fontWeight: '800', color: C.purpleDark, marginBottom: 4 }}>
             Celebrate {activeMilestoneName}!
           </Text>
@@ -1617,13 +2786,31 @@ function MilestonesScreen({
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity
               onPress={() => void handleSaveMilestone()}
-              style={{ backgroundColor: C.purple, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, flex: 1, alignItems: 'center' }}
+              style={{
+                backgroundColor: C.purple,
+                paddingVertical: 10,
+                paddingHorizontal: 16,
+                borderRadius: 12,
+                flex: 1,
+                alignItems: 'center',
+              }}
             >
-              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Mark as Achieved</Text>
+              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>
+                Mark as Achieved
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveMilestoneName(null)}
-              style={{ backgroundColor: '#FFF', borderWidth: 1, borderColor: '#CCC', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, flex: 1, alignItems: 'center' }}
+              style={{
+                backgroundColor: '#FFF',
+                borderWidth: 1,
+                borderColor: '#CCC',
+                paddingVertical: 10,
+                paddingHorizontal: 16,
+                borderRadius: 12,
+                flex: 1,
+                alignItems: 'center',
+              }}
             >
               <Text style={{ color: C.ink, fontWeight: '600', fontSize: 13 }}>Cancel</Text>
             </TouchableOpacity>
@@ -1632,11 +2819,23 @@ function MilestonesScreen({
       )}
 
       {/* Custom Milestones list */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+        }}
+      >
         <Text style={styles.sectionTitle}>Custom Achievements</Text>
         <TouchableOpacity
           onPress={() => setShowAddCustom(!showAddCustom)}
-          style={{ backgroundColor: C.purpleSoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}
+          style={{
+            backgroundColor: C.purpleSoft,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 12,
+          }}
         >
           <Text style={{ color: C.purpleDark, fontWeight: '700', fontSize: 12 }}>+ Add New</Text>
         </TouchableOpacity>
@@ -1664,13 +2863,23 @@ function MilestonesScreen({
             <TouchableOpacity
               disabled={!customName.trim()}
               onPress={() => void handleSaveCustom()}
-              style={[styles.logButton, { flex: 1, marginTop: 0 }, !customName.trim() && styles.buttonDisabled]}
+              style={[
+                styles.logButton,
+                { flex: 1, marginTop: 0 },
+                !customName.trim() && styles.buttonDisabled,
+              ]}
             >
               <Text style={styles.logButtonText}>Save Milestone</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowAddCustom(false)}
-              style={{ backgroundColor: '#ECECEC', borderRadius: 24, flex: 1, justifyContent: 'center', alignItems: 'center' }}
+              style={{
+                backgroundColor: '#ECECEC',
+                borderRadius: 24,
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
             >
               <Text style={{ color: C.ink, fontWeight: '700' }}>Cancel</Text>
             </TouchableOpacity>
@@ -1681,14 +2890,30 @@ function MilestonesScreen({
       {/* Display other/custom milestones */}
       <View>
         {milestones
-          .filter(m => !defaultCDC.some(d => d.name.toLowerCase() === m.name.toLowerCase()))
-          .map(m => (
-            <View key={m.id} style={{ backgroundColor: C.card, borderRadius: 16, padding: 14, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          .filter((m) => !defaultCDC.some((d) => d.name.toLowerCase() === m.name.toLowerCase()))
+          .map((m) => (
+            <View
+              key={m.id}
+              style={{
+                backgroundColor: C.card,
+                borderRadius: 16,
+                padding: 14,
+                marginBottom: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
               <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={{ fontSize: 15, fontWeight: '700', color: C.ink }}>{m.name}</Text>
                 {m.achieved_at && (
                   <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                    Achieved: {new Date(m.achieved_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    Achieved:{' '}
+                    {new Date(m.achieved_at).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
                   </Text>
                 )}
                 {m.notes && (
@@ -1699,7 +2924,7 @@ function MilestonesScreen({
                 onPress={async () => {
                   try {
                     await api.deleteMilestone(m.id);
-                    setMilestones(prev => prev.filter(item => item.id !== m.id));
+                    setMilestones((prev) => prev.filter((item) => item.id !== m.id));
                   } catch {
                     setError('Could not delete milestone.');
                   }
@@ -1710,9 +2935,16 @@ function MilestonesScreen({
               </TouchableOpacity>
             </View>
           ))}
-        {milestones.filter(m => !defaultCDC.some(d => d.name.toLowerCase() === m.name.toLowerCase())).length === 0 && !showAddCustom && (
-          <Text style={{ fontSize: 12, color: C.muted, textAlign: 'center', paddingVertical: 10 }}>No custom achievements logged yet.</Text>
-        )}
+        {milestones.filter(
+          (m) => !defaultCDC.some((d) => d.name.toLowerCase() === m.name.toLowerCase()),
+        ).length === 0 &&
+          !showAddCustom && (
+            <Text
+              style={{ fontSize: 12, color: C.muted, textAlign: 'center', paddingVertical: 10 }}
+            >
+              No custom achievements logged yet.
+            </Text>
+          )}
       </View>
     </View>
   );
@@ -1765,15 +2997,11 @@ function GrowthScreen({
 
   const displayWeight = (kg: number | null | undefined) => {
     if (kg == null) return '—';
-    return unitSystem === 'metric'
-      ? `${kg.toFixed(2)} kg`
-      : `${(kg * 2.20462).toFixed(2)} lbs`;
+    return unitSystem === 'metric' ? `${kg.toFixed(2)} kg` : `${(kg * 2.20462).toFixed(2)} lbs`;
   };
   const displayHeight = (cm: number | null | undefined) => {
     if (cm == null) return '—';
-    return unitSystem === 'metric'
-      ? `${cm.toFixed(1)} cm`
-      : `${(cm / 2.54).toFixed(1)} in`;
+    return unitSystem === 'metric' ? `${cm.toFixed(1)} cm` : `${(cm / 2.54).toFixed(1)} in`;
   };
 
   const parseDateString = (str: string): Date | null => {
@@ -1848,13 +3076,13 @@ function GrowthScreen({
 
   // Build chart data from sorted records
   const chartData = useMemo(() => {
-    const relevant = sorted.filter(r =>
+    const relevant = sorted.filter((r) =>
       chartMetric === 'weight' ? r.weight_kg != null : r.height_cm != null,
     );
     return relevant.slice(-8); // show last 8 entries
   }, [sorted, chartMetric]);
 
-  const chartValues = chartData.map(r =>
+  const chartValues = chartData.map((r) =>
     chartMetric === 'weight' ? (r.weight_kg ?? 0) : (r.height_cm ?? 0),
   );
   const maxVal = Math.max(...chartValues, 0.01);
@@ -1870,18 +3098,20 @@ function GrowthScreen({
   const latestWeightDelta = () => {
     if (!latest?.weight_kg || !previous?.weight_kg) return null;
     const diff = latest.weight_kg - previous.weight_kg;
-    const diffDisplay = unitSystem === 'metric'
-      ? `${diff > 0 ? '+' : ''}${diff.toFixed(2)} kg`
-      : `${diff > 0 ? '+' : ''}${(diff * 2.20462).toFixed(2)} lbs`;
+    const diffDisplay =
+      unitSystem === 'metric'
+        ? `${diff > 0 ? '+' : ''}${diff.toFixed(2)} kg`
+        : `${diff > 0 ? '+' : ''}${(diff * 2.20462).toFixed(2)} lbs`;
     return diffDisplay;
   };
 
   const latestHeightDelta = () => {
     if (!latest?.height_cm || !previous?.height_cm) return null;
     const diff = latest.height_cm - previous.height_cm;
-    const diffDisplay = unitSystem === 'metric'
-      ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)} cm`
-      : `${diff > 0 ? '+' : ''}${(diff / 2.54).toFixed(1)} in`;
+    const diffDisplay =
+      unitSystem === 'metric'
+        ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)} cm`
+        : `${diff > 0 ? '+' : ''}${(diff / 2.54).toFixed(1)} in`;
     return diffDisplay;
   };
 
@@ -1889,14 +3119,27 @@ function GrowthScreen({
     <View style={{ paddingBottom: 40 }}>
       <Header title="Growth" action="⚖" />
       <Text style={styles.heroTitle}>
-        {baby ? `${baby.name}'s` : 'Baby'}{'\n'}Growth Journey
+        {baby ? `${baby.name}'s` : 'Baby'}
+        {'\n'}Growth Journey
       </Text>
 
       {/* Summary cards */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
         <View style={[styles.insightMini, { flex: 1 }]}>
-          <Text style={{ fontSize: 11, fontWeight: '800', color: C.muted, letterSpacing: 1, marginBottom: 6 }}>WEIGHT</Text>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: C.ink }}>{displayWeight(latest?.weight_kg)}</Text>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '800',
+              color: C.muted,
+              letterSpacing: 1,
+              marginBottom: 6,
+            }}
+          >
+            WEIGHT
+          </Text>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: C.ink }}>
+            {displayWeight(latest?.weight_kg)}
+          </Text>
           {latestWeightDelta() && (
             <Text style={{ fontSize: 11, color: '#38B86A', fontWeight: '700', marginTop: 4 }}>
               {latestWeightDelta()} since last
@@ -1904,8 +3147,20 @@ function GrowthScreen({
           )}
         </View>
         <View style={[styles.insightMini, { flex: 1 }]}>
-          <Text style={{ fontSize: 11, fontWeight: '800', color: C.muted, letterSpacing: 1, marginBottom: 6 }}>HEIGHT</Text>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: C.ink }}>{displayHeight(latest?.height_cm)}</Text>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '800',
+              color: C.muted,
+              letterSpacing: 1,
+              marginBottom: 6,
+            }}
+          >
+            HEIGHT
+          </Text>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: C.ink }}>
+            {displayHeight(latest?.height_cm)}
+          </Text>
           {latestHeightDelta() && (
             <Text style={{ fontSize: 11, color: '#38B86A', fontWeight: '700', marginTop: 4 }}>
               {latestHeightDelta()} since last
@@ -1918,7 +3173,7 @@ function GrowthScreen({
       <View style={{ backgroundColor: C.card, borderRadius: 26, padding: 18, marginBottom: 20 }}>
         {/* Toggle weight/height chart */}
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-          {(['weight', 'height'] as const).map(metric => (
+          {(['weight', 'height'] as const).map((metric) => (
             <TouchableOpacity
               key={metric}
               onPress={() => setChartMetric(metric)}
@@ -1931,7 +3186,13 @@ function GrowthScreen({
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ color: chartMetric === metric ? '#FFF' : C.muted, fontSize: 13, fontWeight: '700' }}>
+              <Text
+                style={{
+                  color: chartMetric === metric ? '#FFF' : C.muted,
+                  fontSize: 13,
+                  fontWeight: '700',
+                }}
+              >
                 {metric === 'weight' ? `⚖ Weight` : `↕ Height`}
               </Text>
             </TouchableOpacity>
@@ -1952,7 +3213,15 @@ function GrowthScreen({
               {chartMetric === 'weight' ? displayWeight(maxVal) : displayHeight(maxVal)}
             </Text>
             {/* Bars */}
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: BAR_HEIGHT, gap: 6, marginBottom: 6 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-end',
+                height: BAR_HEIGHT,
+                gap: 6,
+                marginBottom: 6,
+              }}
+            >
               {chartData.map((r, i) => {
                 const val = chartMetric === 'weight' ? (r.weight_kg ?? 0) : (r.height_cm ?? 0);
                 const barH = Math.max(4, ((val - minVal) / range) * BAR_HEIGHT);
@@ -1960,7 +3229,14 @@ function GrowthScreen({
                 return (
                   <View key={r.id} style={{ flex: 1, alignItems: 'center' }}>
                     {isLatest && (
-                      <Text style={{ fontSize: 9, fontWeight: '700', color: C.purpleDark, marginBottom: 2 }}>
+                      <Text
+                        style={{
+                          fontSize: 9,
+                          fontWeight: '700',
+                          color: C.purpleDark,
+                          marginBottom: 2,
+                        }}
+                      >
                         {chartMetric === 'weight' ? displayWeight(val) : displayHeight(val)}
                       </Text>
                     )}
@@ -1980,7 +3256,10 @@ function GrowthScreen({
             {/* X-axis labels */}
             <View style={{ flexDirection: 'row', gap: 6 }}>
               {chartData.map((r) => (
-                <Text key={r.id} style={{ flex: 1, fontSize: 9, color: C.muted, textAlign: 'center' }}>
+                <Text
+                  key={r.id}
+                  style={{ flex: 1, fontSize: 9, color: C.muted, textAlign: 'center' }}
+                >
                   {formatChartLabel(r)}
                 </Text>
               ))}
@@ -2002,7 +3281,7 @@ function GrowthScreen({
       {sorted.length > 0 && (
         <View style={{ marginTop: 24 }}>
           <Text style={styles.sectionTitle}>All Entries</Text>
-          {[...sorted].reverse().map(r => (
+          {[...sorted].reverse().map((r) => (
             <View
               key={r.id}
               style={{
@@ -2064,12 +3343,41 @@ function GrowthScreen({
 
       {/* Floating Log Modal */}
       <Modal visible={showModal} animationType="slide" transparent={true}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: '#FFF', borderRadius: 24, width: '100%', maxWidth: 450, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
-            
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#FFF',
+              borderRadius: 24,
+              width: '100%',
+              maxWidth: 450,
+              padding: 22,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
             {/* Modal Header */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: C.ink }}>Log Growth Entry</Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 18,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: '800', color: C.ink }}>
+                Log Growth Entry
+              </Text>
               <TouchableOpacity onPress={() => setShowModal(false)} style={{ padding: 4 }}>
                 <Text style={{ fontSize: 18, color: C.muted, fontWeight: 'bold' }}>✕</Text>
               </TouchableOpacity>
@@ -2077,8 +3385,17 @@ function GrowthScreen({
 
             {/* Error banner */}
             {logError && (
-              <View style={{ backgroundColor: '#FEE2E2', borderRadius: 12, padding: 10, marginBottom: 15 }}>
-                <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '600' }}>{logError}</Text>
+              <View
+                style={{
+                  backgroundColor: '#FEE2E2',
+                  borderRadius: 12,
+                  padding: 10,
+                  marginBottom: 15,
+                }}
+              >
+                <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '600' }}>
+                  {logError}
+                </Text>
               </View>
             )}
 
@@ -2153,14 +3470,14 @@ function GrowthScreen({
                 placeholderTextColor="#A9A9A9"
                 style={styles.input}
               />
-              
+
               {/* Quick Offset Helpers */}
               <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
                 {[
                   { label: 'Today', offsetDays: 0 },
                   { label: 'Yesterday', offsetDays: 1 },
                   { label: '3 days ago', offsetDays: 3 },
-                ].map(helper => (
+                ].map((helper) => (
                   <TouchableOpacity
                     key={helper.label}
                     onPress={() => {
@@ -2178,7 +3495,9 @@ function GrowthScreen({
                       borderRadius: 8,
                     }}
                   >
-                    <Text style={{ color: C.purpleDark, fontSize: 11, fontWeight: '700' }}>{helper.label}</Text>
+                    <Text style={{ color: C.purpleDark, fontSize: 11, fontWeight: '700' }}>
+                      {helper.label}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -2207,11 +3526,9 @@ function GrowthScreen({
                 <Text style={styles.logButtonText}>Save Growth</Text>
               )}
             </TouchableOpacity>
-
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
@@ -2507,12 +3824,9 @@ const styles = StyleSheet.create({
   chip: { backgroundColor: C.card, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 18 },
   chipText: { fontSize: 11, color: C.ink },
   historyChart: {
-    height: 190,
     backgroundColor: '#EDDDF5',
     borderRadius: 24,
-    overflow: 'hidden',
     marginBottom: 25,
-    justifyContent: 'flex-end',
   },
   historyBars: {
     height: 150,
@@ -2709,5 +4023,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: C.ink,
     lineHeight: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  menuContainer: {
+    backgroundColor: C.card,
+    borderRadius: 24,
+    width: '100%',
+    maxWidth: 320,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: C.ink,
+  },
+  menuCloseBtn: {
+    padding: 4,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8F8F8',
+  },
+  menuIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: C.purpleSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuIcon: {
+    fontSize: 18,
+    color: C.purpleDark,
+    fontWeight: '600',
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.ink,
   },
 });

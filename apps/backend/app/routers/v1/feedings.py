@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
@@ -30,9 +30,17 @@ class FeedingSchema(BaseModel):
     quantity_ml: float | None = None
     breast_side: str | None = None
     notes: str | None = None
+    deleted_at: datetime | None = None
 
     class Config:
         from_attributes = True
+
+    @field_validator('start_time', 'deleted_at', mode='after')
+    @classmethod
+    def ensure_utc(cls, v: datetime | None) -> datetime | None:
+        if v is not None and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
 
 
 @router.post("/", response_model=FeedingSchema)
@@ -62,6 +70,22 @@ async def list_feedings(
     db: AsyncSession = Depends(get_db),
     firebase_uid: str = Depends(get_current_firebase_uid),
 ):
-    stmt = select(Feeding).where(Feeding.baby_id == baby_id).order_by(Feeding.start_time.desc())
+    stmt = select(Feeding).where(Feeding.baby_id == baby_id, Feeding.deleted_at == None).order_by(Feeding.start_time.desc())
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+@router.delete("/{feeding_id}")
+async def delete_feeding(
+    feeding_id: int,
+    db: AsyncSession = Depends(get_db),
+    firebase_uid: str = Depends(get_current_firebase_uid),
+):
+    stmt = select(Feeding).where(Feeding.id == feeding_id)
+    result = await db.execute(stmt)
+    feeding = result.scalar_one_or_none()
+    if not feeding:
+        raise HTTPException(status_code=404, detail="Feeding record not found")
+    feeding.deleted_at = datetime.utcnow()
+    await db.commit()
+    return {"status": "success"}

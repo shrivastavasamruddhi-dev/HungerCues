@@ -92,3 +92,27 @@ async def get_recent_notifications(
     entries = list(notification_log)
     entries.reverse()  # Most recent first
     return [NotificationEntry(**entry) for entry in entries]
+
+
+@router.post("/clear", response_model=RegisterTokenResponse)
+async def clear_notifications(
+    firebase_uid: str = Depends(get_current_firebase_uid),
+):
+    """Clear all entries from the in-memory notification log."""
+    notification_log.clear()
+    return RegisterTokenResponse(status="cleared")
+
+
+@router.delete("/{notification_id}", response_model=RegisterTokenResponse)
+async def delete_notification(
+    notification_id: int,
+    firebase_uid: str = Depends(get_current_firebase_uid),
+):
+    """Remove a single notification entry by ID from the in-memory log."""
+    original_len = len(notification_log)
+    to_keep = [entry for entry in notification_log if entry.get("id") != notification_id]
+    if len(to_keep) == original_len:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    notification_log.clear()
+    notification_log.extend(to_keep)
+    return RegisterTokenResponse(status="deleted")

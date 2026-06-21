@@ -16,3 +16,4 @@ class SleepSession(Base):
     tracking_method: Mapped[str] = mapped_column(String(50), default="manual")  # manual, timer
     sleep_type: Mapped[str] = mapped_column(String(50), default="nap")  # nap, night_sleep
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

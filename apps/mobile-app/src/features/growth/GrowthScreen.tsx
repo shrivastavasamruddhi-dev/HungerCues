@@ -11,6 +11,10 @@ import {
 import { C } from '../../constants/colors';
 import { Header } from '../../components/Header';
 import { growthService } from '../../services/growthService';
+import { StatCard } from '../../components/StatCard';
+import { EmptyState } from '../../components/EmptyState';
+import { SectionTitle } from '../../components/SectionTitle';
+import { ErrorBox } from '../../components/ErrorBox';
 import type { Baby, GrowthRecord } from '../../types';
 
 interface Props {
@@ -182,22 +186,17 @@ export function GrowthScreen({ baby, growth, unitSystem, setUnitSystem, onRefres
         {'\n'}Growth Journey
       </Text>
 
-      {/* Summary cards */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-        <View style={styles.insightMini}>
-          <Text style={styles.insightMiniLabel}>WEIGHT</Text>
-          <Text style={styles.insightMiniValue}>{displayWeight(latest?.weight_kg)}</Text>
-          {latestWeightDelta() && (
-            <Text style={styles.deltaText}>{latestWeightDelta()} since last</Text>
-          )}
-        </View>
-        <View style={styles.insightMini}>
-          <Text style={styles.insightMiniLabel}>HEIGHT</Text>
-          <Text style={styles.insightMiniValue}>{displayHeight(latest?.height_cm)}</Text>
-          {latestHeightDelta() && (
-            <Text style={styles.deltaText}>{latestHeightDelta()} since last</Text>
-          )}
-        </View>
+        <StatCard
+          label="WEIGHT"
+          value={displayWeight(latest?.weight_kg)}
+          subtitle={latestWeightDelta() ? `${latestWeightDelta()} since last` : null}
+        />
+        <StatCard
+          label="HEIGHT"
+          value={displayHeight(latest?.height_cm)}
+          subtitle={latestHeightDelta() ? `${latestHeightDelta()} since last` : null}
+        />
       </View>
 
       {/* Chart section */}
@@ -277,7 +276,7 @@ export function GrowthScreen({ baby, growth, unitSystem, setUnitSystem, onRefres
       {/* Entry history */}
       {sorted.length > 0 && (
         <View style={{ marginTop: 24 }}>
-          <Text style={styles.sectionTitle}>All Entries</Text>
+          <SectionTitle>All Entries</SectionTitle>
           {[...sorted].reverse().map((r) => (
             <View key={r.id} style={styles.historyCard}>
               <View style={styles.historyIconCircle}>
@@ -312,10 +311,11 @@ export function GrowthScreen({ baby, growth, unitSystem, setUnitSystem, onRefres
       )}
 
       {sorted.length === 0 && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No growth entries yet</Text>
-          <Text style={styles.emptyCopy}>Tap the button above to log weight or height.</Text>
-        </View>
+        <EmptyState
+          title="No growth entries yet"
+          description="Tap the button above to log weight or height."
+          style={{ marginTop: 24 }}
+        />
       )}
 
       {/* Floating Log Modal */}
@@ -331,11 +331,7 @@ export function GrowthScreen({ baby, growth, unitSystem, setUnitSystem, onRefres
             </View>
 
             {/* Error banner */}
-            {logError && (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorBannerText}>{logError}</Text>
-              </View>
-            )}
+            {logError && <ErrorBox message={logError} style={{ marginBottom: 15 }} />}
 
             {/* Unit System Toggle */}
             <Text style={styles.inputLabel}>Unit System</Text>
@@ -565,13 +561,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 15,
   },
-  sectionTitle: {
-    fontSize: 21,
-    lineHeight: 25,
-    color: C.ink,
-    fontWeight: '800',
-    marginBottom: 18,
-  },
   historyCard: {
     backgroundColor: C.card,
     borderRadius: 18,
@@ -589,24 +578,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyCard: {
-    padding: 24,
-    borderRadius: 22,
-    backgroundColor: C.card,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  emptyTitle: {
-    color: C.ink,
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  emptyCopy: {
-    color: C.muted,
-    fontSize: 12,
-    marginTop: 5,
-    textAlign: 'center',
-  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -637,17 +609,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: C.ink,
   },
-  errorBanner: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 15,
-  },
-  errorBannerText: {
-    color: '#DC2626',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+
   inputLabel: {
     color: '#555',
     fontSize: 11,

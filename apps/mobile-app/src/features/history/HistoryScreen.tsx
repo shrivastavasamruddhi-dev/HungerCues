@@ -15,6 +15,8 @@ import { sleepService } from '../../services/sleepService';
 import { diaperService } from '../../services/diaperService';
 import { growthService } from '../../services/growthService';
 import { formatEventTime } from '../../utils/date';
+import { SectionTitle } from '../../components/SectionTitle';
+import { EmptyState } from '../../components/EmptyState';
 import type { TimelineEvent, Feeding, SleepSession, DiaperChange } from '../../types';
 
 interface Props {
@@ -296,7 +298,7 @@ export function HistoryScreen({
       )}
 
       {/* ── Stat Chip Buttons ── */}
-      <Text style={styles.sectionTitle}>Today's Summary</Text>
+      <SectionTitle>Today's Summary</SectionTitle>
       <View style={styles.chips}>
         {(
           [
@@ -673,12 +675,9 @@ export function HistoryScreen({
       )}
 
       {/* ── Recent Activity ── */}
-      <Text style={styles.sectionTitle}>Recent activity</Text>
+      <SectionTitle>Recent activity</SectionTitle>
       {!recent.length && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No activity yet</Text>
-          <Text style={styles.emptyCopy}>Use Quick Log to save the first moment.</Text>
-        </View>
+        <EmptyState title="No activity yet" description="Use Quick Log to save the first moment." />
       )}
       {recent.map((event) => {
         const isSelected = selectedIds.includes(event.id);
@@ -747,7 +746,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
-  sectionTitle: { fontSize: 21, lineHeight: 25, color: C.ink, fontWeight: '800', marginBottom: 18 },
+
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -794,9 +793,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  emptyCard: { padding: 24, borderRadius: 22, backgroundColor: C.card, alignItems: 'center' },
-  emptyTitle: { color: C.ink, fontWeight: '800', fontSize: 16 },
-  emptyCopy: { color: C.muted, fontSize: 12, marginTop: 5, textAlign: 'center' },
+
   eventCard: {
     minHeight: 72,
     borderRadius: 20,

@@ -10,6 +10,7 @@ import {
 import { C } from '../../constants/colors';
 import { activityMeta } from '../../constants/activityMeta';
 import { Header } from '../../components/Header';
+import { SectionTitle } from '../../components/SectionTitle';
 import type { Activity, FeedType } from '../../types';
 
 interface Props {
@@ -145,13 +146,13 @@ export function LogScreen({
 
       {activity !== 'growth' && (
         <>
-          <Text style={styles.sectionTitle}>
+          <SectionTitle>
             {activity === 'feed'
               ? 'Feed Type'
               : activity === 'sleep'
                 ? 'Sleep Type'
                 : 'Diaper Type'}
-          </Text>
+          </SectionTitle>
           <View style={styles.typeRow}>
             {options.map((type, index) => (
               <TouchableOpacity
@@ -516,7 +517,7 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: C.purple },
   segmentText: { color: C.muted, fontSize: 15 },
   white: { color: '#FFF' },
-  sectionTitle: { fontSize: 21, lineHeight: 25, color: C.ink, fontWeight: '800', marginBottom: 18 },
+
   typeRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   typeCard: {
     flex: 1,

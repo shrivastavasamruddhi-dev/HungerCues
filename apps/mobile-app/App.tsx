@@ -45,6 +45,8 @@ import { GrowthScreen } from './src/features/growth/GrowthScreen';
 import { HistoryScreen } from './src/features/history/HistoryScreen';
 import { InsightsScreen } from './src/features/insights/InsightsScreen';
 import { MilestonesScreen } from './src/features/milestones/MilestonesScreen';
+import { SectionTitle } from './src/components/SectionTitle';
+import { EmptyState } from './src/components/EmptyState';
 
 export default function App() {
   const { width } = useWindowDimensions();
@@ -391,7 +393,7 @@ export default function App() {
                   marginBottom: 20,
                 }}
               >
-                <Text style={styles.sectionTitle}>Recent Alerts</Text>
+                <SectionTitle>Recent Alerts</SectionTitle>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity
                     onPress={async () => {
@@ -431,12 +433,10 @@ export default function App() {
               </View>
 
               {!notifications.length ? (
-                <View style={styles.emptyCard}>
-                  <Text style={styles.emptyTitle}>No notifications</Text>
-                  <Text style={styles.emptyCopy}>
-                    All caught up! Active alerts will appear here.
-                  </Text>
-                </View>
+                <EmptyState
+                  title="No notifications"
+                  description="All caught up! Active alerts will appear here."
+                />
               ) : (
                 notifications.map((n) => (
                   <SwipeableNotification
@@ -658,7 +658,6 @@ const styles = StyleSheet.create({
   retryText: { color: '#A23B3B', fontSize: 10, textAlign: 'center', marginTop: 4 },
   loadingState: { minHeight: 240, alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: C.muted, marginTop: 12, fontSize: 13 },
-  sectionTitle: { fontSize: 21, lineHeight: 25, color: C.ink, fontWeight: '800', marginBottom: 18 },
   logButton: {
     height: 48,
     borderRadius: 24,
@@ -667,7 +666,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 16,
   },
-  emptyCard: { padding: 24, borderRadius: 22, backgroundColor: C.card, alignItems: 'center' },
-  emptyTitle: { color: C.ink, fontWeight: '800', fontSize: 16 },
-  emptyCopy: { color: C.muted, fontSize: 12, marginTop: 5 },
 });

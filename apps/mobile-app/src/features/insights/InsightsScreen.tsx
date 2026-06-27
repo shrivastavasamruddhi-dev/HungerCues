@@ -10,6 +10,8 @@ import {
 import { C } from '../../constants/colors';
 import { Header } from '../../components/Header';
 import { aiService } from '../../services/aiService';
+import { StatCard } from '../../components/StatCard';
+import { ErrorBox } from '../../components/ErrorBox';
 import type { Baby, Feeding, SleepSession, AIInsight, AIWeeklySummary } from '../../types';
 
 interface Props {
@@ -128,14 +130,8 @@ export function InsightsScreen({ baby, insight, loading, feedings, sleep, onGene
             </Text>
           </View>
           <View style={styles.insightRow}>
-            <View style={styles.insightMini}>
-              <Text style={styles.miniNumber}>{averageSleep}m</Text>
-              <Text style={styles.miniLabel}>Average sleep</Text>
-            </View>
-            <View style={styles.insightMini}>
-              <Text style={styles.miniNumber}>{averageBottle}ml</Text>
-              <Text style={styles.miniLabel}>Average bottle</Text>
-            </View>
+            <StatCard label="Average sleep" value={`${averageSleep}m`} reverseLayout />
+            <StatCard label="Average bottle" value={`${averageBottle}ml`} reverseLayout />
           </View>
           {insight && (
             <View style={styles.recommendationCard}>
@@ -196,11 +192,7 @@ export function InsightsScreen({ baby, insight, loading, feedings, sleep, onGene
                 )}
               </TouchableOpacity>
             </View>
-            {askError && (
-              <View style={styles.askErrorBox}>
-                <Text style={styles.askErrorText}>{askError}</Text>
-              </View>
-            )}
+            {askError && <ErrorBox message={askError} style={{ marginTop: 12 }} />}
             {answer && (
               <View style={styles.answerBox}>
                 <View style={styles.answerHeaderRow}>
@@ -226,9 +218,7 @@ export function InsightsScreen({ baby, insight, loading, feedings, sleep, onGene
       {insightsTab === 'weekly' && (
         <View>
           {weeklyError && (
-            <View style={styles.askErrorBox}>
-              <Text style={styles.askErrorText}>{weeklyError}</Text>
-            </View>
+            <ErrorBox message={weeklyError} style={{ marginTop: 12, marginBottom: 12 }} />
           )}
 
           <View style={[styles.insightCard, { backgroundColor: C.purpleDark }]}>
@@ -337,8 +327,6 @@ const styles = StyleSheet.create({
   insightCopy: { color: '#F5E4FC', fontSize: 14, lineHeight: 20, marginTop: 28 },
   insightRow: { flexDirection: 'row', gap: 12 },
   insightMini: { flex: 1, backgroundColor: C.card, borderRadius: 24, padding: 20 },
-  miniNumber: { fontSize: 26, fontWeight: '800', color: C.ink },
-  miniLabel: { fontSize: 12, color: C.muted, marginTop: 7 },
   recommendationCard: { marginTop: 14, borderRadius: 24, backgroundColor: C.card, padding: 20 },
   recommendationTitle: { color: C.ink, fontSize: 16, fontWeight: '800', marginBottom: 10 },
   recommendationText: { color: '#555', fontSize: 12, lineHeight: 18, marginBottom: 7 },
@@ -397,17 +385,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 18,
   },
-  askErrorBox: {
-    backgroundColor: '#FFF0F0',
-    borderRadius: 14,
-    padding: 12,
-    marginTop: 12,
-  },
-  askErrorText: {
-    color: '#A23B3B',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+
   answerBox: {
     backgroundColor: '#F0F0F0',
     borderRadius: 16,

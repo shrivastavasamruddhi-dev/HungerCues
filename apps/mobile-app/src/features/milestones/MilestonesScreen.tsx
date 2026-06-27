@@ -10,6 +10,8 @@ import {
 import { C } from '../../constants/colors';
 import { Header } from '../../components/Header';
 import { milestoneService } from '../../services/milestoneService';
+import { SectionTitle } from '../../components/SectionTitle';
+import { ErrorBox } from '../../components/ErrorBox';
 import type { Baby, Milestone } from '../../types';
 
 interface Props {
@@ -119,18 +121,14 @@ export function MilestonesScreen({ baby }: Props) {
       <Header title="Milestones" action="⚐" />
       <Text style={styles.heroTitle}>Celebrate the{'\n'}small steps.</Text>
 
-      {error && (
-        <View style={styles.askErrorBox}>
-          <Text style={styles.askErrorText}>{error}</Text>
-        </View>
-      )}
+      {error && <ErrorBox message={error} style={{ marginBottom: 16 }} />}
 
       {loading && (
         <ActivityIndicator size="small" color={C.purple} style={{ marginVertical: 20 }} />
       )}
 
       {/* CDC Predefined Milestones */}
-      <Text style={styles.sectionTitle}>Developmental Checklist</Text>
+      <SectionTitle>Developmental Checklist</SectionTitle>
       <View style={styles.checklistContainer}>
         {defaultCDC.map((item) => {
           const matched = milestones.find((m) => m.name.toLowerCase() === item.name.toLowerCase());
@@ -193,7 +191,7 @@ export function MilestonesScreen({ baby }: Props) {
 
       {/* Custom Milestones list */}
       <View style={styles.customHeaderRow}>
-        <Text style={styles.sectionTitle}>Custom Achievements</Text>
+        <SectionTitle>Custom Achievements</SectionTitle>
         <TouchableOpacity onPress={() => setShowAddCustom(!showAddCustom)} style={styles.addNewBtn}>
           <Text style={{ color: C.purpleDark, fontWeight: '700', fontSize: 12 }}>+ Add New</Text>
         </TouchableOpacity>
@@ -296,13 +294,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.7,
     marginBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 21,
-    lineHeight: 25,
-    color: C.ink,
-    fontWeight: '800',
-    marginBottom: 18,
-  },
+
   checklistContainer: {
     backgroundColor: C.card,
     borderRadius: 24,
@@ -407,18 +399,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 10,
   },
-  askErrorBox: {
-    backgroundColor: '#FFF0F0',
-    borderRadius: 14,
-    padding: 12,
-    marginTop: 12,
-    marginBottom: 16,
-  },
-  askErrorText: {
-    color: '#A23B3B',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+
   inputLabel: {
     color: '#555',
     fontSize: 11,

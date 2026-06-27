@@ -43,10 +43,10 @@ import { common } from './src/styles/common';
 import { useActiveSleepTimer } from './src/hooks/useActiveSleepTimer';
 
 import { Header } from './src/components/Header';
-import { SegmentedControl } from './src/components/SegmentedControl';
 import { BottomNav } from './src/components/BottomNav';
 import { SwipeableNotification } from './src/components/SwipeableNotification';
 import { DeletedActivitiesModal } from './src/components/DeletedActivitiesModal';
+import { HomeScreen } from './src/features/home/HomeScreen';
 
 export default function App() {
   const { width } = useWindowDimensions();
@@ -621,114 +621,6 @@ export default function App() {
         onRestore={loadData}
       />
     </SafeAreaView>
-  );
-}
-
-function HomeScreen({
-  baby,
-  events,
-  feedings,
-  diapers,
-  filter,
-  setFilter,
-  onQuickLog,
-  activeSleepStart,
-  elapsedSeconds,
-  formatElapsed,
-  notifications,
-  onPressNotifications,
-}: {
-  baby: Baby | null;
-  events: TimelineEvent[];
-  feedings: Feeding[];
-  diapers: DiaperChange[];
-  filter: 'all' | Activity;
-  setFilter: (value: 'all' | Activity) => void;
-  onQuickLog: (kind: Activity) => void;
-  activeSleepStart: string | null;
-  elapsedSeconds: number;
-  formatElapsed: (secs: number) => string;
-  notifications: NotificationEntry[];
-  onPressNotifications: () => void;
-}) {
-  const latestBottle = feedings.find((item) => item.quantity_ml);
-  const today = new Date().toDateString();
-  const todayDiapers = diapers.filter(
-    (item) => new Date(item.changed_at).toDateString() === today,
-  ).length;
-
-  const unreadCount = notifications.length;
-
-  return (
-    <View>
-      <Header
-        title={baby ? `${baby.name}'s day` : 'BabyTracker'}
-        onPress={onPressNotifications}
-        action={
-          <View style={{ position: 'relative' }}>
-            <Text style={styles.headerActionText}>🔔</Text>
-            {unreadCount > 0 && (
-              <View
-                style={{
-                  position: 'absolute',
-                  right: -4,
-                  top: -4,
-                  backgroundColor: '#E53E3E',
-                  borderRadius: 8,
-                  width: 16,
-                  height: 16,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1.5,
-                  borderColor: C.purple,
-                }}
-              >
-                <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold' }}>
-                  {unreadCount}
-                </Text>
-              </View>
-            )}
-          </View>
-        }
-      />
-      <View style={styles.connectionRow}>
-        <View style={styles.onlineDot} />
-        <Text style={styles.connectionText}>Live data · SQLite connected</Text>
-      </View>
-      {activeSleepStart && (
-        <TouchableOpacity style={styles.activeTimerBanner} onPress={() => onQuickLog('sleep')}>
-          <View style={styles.timerDot} />
-          <Text style={styles.activeTimerText}>
-            Baby is sleeping: {formatElapsed(elapsedSeconds)}
-          </Text>
-        </TouchableOpacity>
-      )}
-      <SegmentedControl active={filter} onChange={setFilter} />
-      <Text style={styles.heroTitle}>
-        {events.length
-          ? `${events.length} moments logged.\nEvery one matters.`
-          : 'Your Every Step\nIn Parenting\nMatters'}
-      </Text>
-      <View style={styles.heroVisual}>
-        <View style={styles.motherHalo} />
-        <Text style={styles.familyEmoji}>👩‍🍼</Text>
-        <TouchableOpacity style={styles.feedTile} onPress={() => onQuickLog('feed')}>
-          <View style={styles.tileTopRow}>
-            <Text style={styles.tileValue}>{latestBottle?.quantity_ml ?? 120}ml</Text>
-            <View style={styles.roundWhite}>
-              <Text>♙</Text>
-            </View>
-          </View>
-          <Text style={styles.tileLabel}>
-            {latestBottle ? 'Latest bottle' : 'Log first bottle'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.diaperTile} onPress={() => onQuickLog('diaper')}>
-          <Text style={styles.diaperValue}>{todayDiapers}</Text>
-          <Text style={styles.diaperLabel}>Diapers today</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
   );
 }
 

@@ -18,8 +18,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { api } from './src/api';
 import {
-  api,
   AIInsight,
   Baby,
   DiaperChange,
@@ -29,7 +29,7 @@ import {
   Milestone,
   NotificationEntry,
   AIWeeklySummary,
-} from './src/api';
+} from './src/types';
 
 import { C } from './src/constants/colors';
 import { activityMeta } from './src/constants/activityMeta';

@@ -29,6 +29,10 @@ import {
   Milestone,
   NotificationEntry,
   AIWeeklySummary,
+  Tab,
+  Activity,
+  FeedType,
+  TimelineEvent,
 } from './src/types';
 
 import { C } from './src/constants/colors';
@@ -38,17 +42,10 @@ import { formatEventTime, formatElapsed, getCustomDateTime } from './src/utils/d
 import { common } from './src/styles/common';
 import { useActiveSleepTimer } from './src/hooks/useActiveSleepTimer';
 
-type Tab = 'home' | 'log' | 'history' | 'insights' | 'milestones' | 'growth';
-type Activity = 'feed' | 'sleep' | 'diaper' | 'growth';
-type FeedType = 'Breast' | 'Bottle' | 'Solid';
-type TimelineEvent = {
-  id: string;
-  kind: Activity;
-  icon: string;
-  title: string;
-  occurredAt: string;
-  note: string;
-};
+import { Header } from './src/components/Header';
+import { SegmentedControl } from './src/components/SegmentedControl';
+import { BottomNav } from './src/components/BottomNav';
+import { SwipeableNotification } from './src/components/SwipeableNotification';
 
 export default function App() {
   const { width } = useWindowDimensions();
@@ -626,88 +623,6 @@ export default function App() {
   );
 }
 
-function SwipeableNotification({
-  notification,
-  onDismiss,
-}: {
-  notification: NotificationEntry;
-  onDismiss: () => void;
-}) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(1)).current;
-  const SWIPE_THRESHOLD = 80;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) =>
-        Math.abs(gestureState.dx) > 8 && Math.abs(gestureState.dy) < 20,
-      onPanResponderMove: (_, gestureState) => {
-        translateX.setValue(gestureState.dx);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
-          // Swipe passed threshold — dismiss
-          Animated.parallel([
-            Animated.timing(translateX, {
-              toValue: gestureState.dx > 0 ? 500 : -500,
-              duration: 220,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-          ]).start(onDismiss);
-        } else {
-          // Snap back
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 80,
-            friction: 8,
-          }).start();
-        }
-      },
-    }),
-  ).current;
-
-  return (
-    <Animated.View style={[{ transform: [{ translateX }], opacity }]} {...panResponder.panHandlers}>
-      <View
-        style={[
-          styles.eventCard,
-          {
-            borderLeftWidth: 4,
-            borderLeftColor: notification.type === 'sleep_timer' ? '#48BB78' : '#ED8936',
-          },
-        ]}
-      >
-        <View style={styles.eventIcon}>
-          <Text style={styles.purpleText}>
-            {notification.type === 'sleep_timer'
-              ? '☾'
-              : notification.type === 'feed_gap'
-                ? '♙'
-                : '♢'}
-          </Text>
-        </View>
-        <View style={styles.eventBody}>
-          <Text style={styles.eventTitle}>{notification.title}</Text>
-          <Text style={{ fontSize: 13, color: C.ink, marginTop: 2 }}>{notification.body}</Text>
-          <Text style={styles.eventMeta}>
-            {new Date(notification.sent_at).toLocaleTimeString(undefined, {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-          </Text>
-        </View>
-        <Text style={{ fontSize: 11, color: '#BFBFBF', paddingLeft: 4 }}>⟵⟶</Text>
-      </View>
-    </Animated.View>
-  );
-}
-
 function DeletedActivitiesModal({
   visible,
   onClose,
@@ -939,68 +854,6 @@ function DeletedActivitiesModal({
         </View>
       </View>
     </Modal>
-  );
-}
-
-function Header({
-  title,
-  action = '⋮',
-  onPress,
-}: {
-  title: string;
-  action?: React.ReactNode;
-  onPress?: () => void;
-}) {
-  return (
-    <View style={styles.header}>
-      <Text style={styles.headerTitle}>{title}</Text>
-      <TouchableOpacity
-        accessibilityLabel={title + ' Action'}
-        onPress={onPress}
-        style={styles.headerAction}
-      >
-        {typeof action === 'string' ? (
-          <Text style={styles.headerActionText}>{action}</Text>
-        ) : (
-          action
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function SegmentedControl({
-  active,
-  onChange,
-}: {
-  active: 'all' | Activity;
-  onChange: (value: 'all' | Activity) => void;
-}) {
-  return (
-    <View style={styles.segmentRow}>
-      {[
-        { key: 'all', icon: '', label: 'All' },
-        { key: 'feed', icon: '♙', label: 'Feed' },
-        { key: 'sleep', icon: '☾', label: 'Sleep' },
-        { key: 'diaper', icon: '♢', label: 'Diaper' },
-        { key: 'growth', icon: '⚖', label: 'Growth' },
-      ].map((item) => (
-        <TouchableOpacity
-          key={item.key}
-          onPress={() => onChange(item.key as 'all' | Activity)}
-          style={[styles.segment, active === item.key && styles.segmentActive]}
-        >
-          {!!item.icon && (
-            <Text style={[styles.segmentIcon, active === item.key && styles.white]}>
-              {item.icon}
-            </Text>
-          )}
-          <Text style={[styles.segmentText, active === item.key && styles.white]}>
-            {item.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
   );
 }
 
@@ -3546,38 +3399,6 @@ function GrowthScreen({
           </View>
         </View>
       </Modal>
-    </View>
-  );
-}
-
-function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
-  const items: { key: Tab; icon: string; label: string }[] = [
-    { key: 'home', icon: '⌂', label: 'Home' },
-    { key: 'log', icon: '+', label: 'Log' },
-    { key: 'growth', icon: '⚖', label: 'Growth' },
-    { key: 'insights', icon: '▥', label: 'Insights' },
-    { key: 'milestones', icon: '⚐', label: 'Goals' },
-  ];
-  return (
-    <View style={styles.navWrap}>
-      <View style={styles.nav}>
-        {items.map((item) => (
-          <TouchableOpacity
-            key={item.key}
-            accessibilityRole="button"
-            accessibilityLabel={item.label}
-            onPress={() => onChange(item.key)}
-            style={styles.navItem}
-          >
-            <Text style={[styles.navIcon, active === item.key && styles.purpleText]}>
-              {item.icon}
-            </Text>
-            <Text style={[styles.navLabel, active === item.key && styles.purpleText]}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
     </View>
   );
 }

@@ -77,3 +77,15 @@ export interface AIWeeklySummary {
   growth_insights: string;
   recommendations: string[];
 }
+
+export type Tab = 'home' | 'log' | 'history' | 'insights' | 'milestones' | 'growth';
+export type Activity = 'feed' | 'sleep' | 'diaper' | 'growth';
+export type FeedType = 'Breast' | 'Bottle' | 'Solid';
+export interface TimelineEvent {
+  id: string;
+  kind: Activity;
+  icon: string;
+  title: string;
+  occurredAt: string;
+  note: string;
+}

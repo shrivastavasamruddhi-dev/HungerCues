@@ -31,6 +31,9 @@ import {
   AIWeeklySummary,
 } from './src/api';
 
+import { C } from './src/constants/colors';
+import { activityMeta } from './src/constants/activityMeta';
+
 type Tab = 'home' | 'log' | 'history' | 'insights' | 'milestones' | 'growth';
 type Activity = 'feed' | 'sleep' | 'diaper' | 'growth';
 type FeedType = 'Breast' | 'Bottle' | 'Solid';
@@ -41,24 +44,6 @@ type TimelineEvent = {
   title: string;
   occurredAt: string;
   note: string;
-};
-
-const C = {
-  ink: '#111111',
-  muted: '#8D8D8D',
-  canvas: '#ECECEC',
-  card: '#FFFFFF',
-  purple: '#C45BF2',
-  purpleDark: '#A83CDE',
-  purpleSoft: '#F1DDFB',
-  line: '#E7E7E7',
-};
-
-const activityMeta = {
-  feed: { icon: '♙', label: 'Feed' },
-  sleep: { icon: '☾', label: 'Sleep' },
-  diaper: { icon: '♢', label: 'Diaper' },
-  growth: { icon: '⚖', label: 'Growth' },
 };
 
 export default function App() {
@@ -1642,10 +1627,7 @@ function HistoryScreen({
   onRefreshData: () => Promise<void>;
   onBack: () => void;
 }) {
-  const recent = useMemo(
-    () => events.filter((e) => e.kind !== 'growth').slice(0, 20),
-    [events],
-  );
+  const recent = useMemo(() => events.filter((e) => e.kind !== 'growth').slice(0, 20), [events]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeGraph, setActiveGraph] = useState<'feed' | 'sleep' | 'diaper'>('feed');
   // For sleep swipeable (0 = timeline, 1 = weekly bar chart)
@@ -1874,12 +1856,7 @@ function HistoryScreen({
     <View>
       {/* ── Header ── */}
       {selectedIds.length > 0 ? (
-        <View
-          style={[
-            styles.header,
-            { backgroundColor: C.purpleSoft, paddingRight: 10 },
-          ]}
-        >
+        <View style={[styles.header, { backgroundColor: C.purpleSoft, paddingRight: 10 }]}>
           <TouchableOpacity
             onPress={() => setSelectedIds([])}
             style={{ paddingVertical: 8, paddingHorizontal: 4 }}
@@ -1919,9 +1896,21 @@ function HistoryScreen({
       <View style={styles.chips}>
         {(
           [
-            { key: 'feed', label: `${counts.feed} feed${counts.feed !== 1 ? 's' : ''}`, icon: '🍼' },
-            { key: 'sleep', label: `${counts.sleep} sleep session${counts.sleep !== 1 ? 's' : ''}`, icon: '😴' },
-            { key: 'diaper', label: `${counts.diaper} diaper${counts.diaper !== 1 ? 's' : ''}`, icon: '🧷' },
+            {
+              key: 'feed',
+              label: `${counts.feed} feed${counts.feed !== 1 ? 's' : ''}`,
+              icon: '🍼',
+            },
+            {
+              key: 'sleep',
+              label: `${counts.sleep} sleep session${counts.sleep !== 1 ? 's' : ''}`,
+              icon: '😴',
+            },
+            {
+              key: 'diaper',
+              label: `${counts.diaper} diaper${counts.diaper !== 1 ? 's' : ''}`,
+              icon: '🧷',
+            },
           ] as { key: 'feed' | 'sleep' | 'diaper'; label: string; icon: string }[]
         ).map((chip) => (
           <TouchableOpacity
@@ -1938,7 +1927,12 @@ function HistoryScreen({
               },
             ]}
           >
-            <Text style={[styles.chipText, activeGraph === chip.key && { color: '#FFF', fontWeight: '700' }]}>
+            <Text
+              style={[
+                styles.chipText,
+                activeGraph === chip.key && { color: '#FFF', fontWeight: '700' },
+              ]}
+            >
               {chip.icon} {chip.label}
             </Text>
           </TouchableOpacity>
@@ -1958,11 +1952,15 @@ function HistoryScreen({
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#C45BF2' }} />
+              <View
+                style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#C45BF2' }}
+              />
               <Text style={{ fontSize: 10, color: C.muted }}>Bottle</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#F9A8D4' }} />
+              <View
+                style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#F9A8D4' }}
+              />
               <Text style={{ fontSize: 10, color: C.muted }}>Breast (est.)</Text>
             </View>
           </View>
@@ -1977,7 +1975,15 @@ function HistoryScreen({
                   <Text style={{ fontSize: 8, color: C.muted, marginBottom: 2 }}>
                     {d.total > 0 ? `${d.total}` : ''}
                   </Text>
-                  <View style={{ width: '100%', height: totalH, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end' }}>
+                  <View
+                    style={{
+                      width: '100%',
+                      height: totalH,
+                      borderRadius: 6,
+                      overflow: 'hidden',
+                      justifyContent: 'flex-end',
+                    }}
+                  >
                     <View style={{ height: bottleH, backgroundColor: C.purple }} />
                     <View style={{ height: breastH, backgroundColor: '#F9A8D4' }} />
                   </View>
@@ -2003,7 +2009,9 @@ function HistoryScreen({
           ]}
         >
           {/* Swipe hint dots */}
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 10 }}>
+          <View
+            style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 10 }}
+          >
             {[0, 1].map((idx) => (
               <TouchableOpacity key={idx} onPress={() => setSleepView(idx as 0 | 1)}>
                 <View
@@ -2025,20 +2033,35 @@ function HistoryScreen({
             {sleepView === 0 ? (
               /* ── TODAY'S TIMELINE ── */
               <View>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: '#3730A3', marginBottom: 8 }}>
+                <Text
+                  style={{ fontSize: 13, fontWeight: '800', color: '#3730A3', marginBottom: 8 }}
+                >
                   😴 Today's Sleep Timeline
                 </Text>
                 {/* Time axis labels */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                <View
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}
+                >
                   {['12 AM', '6 AM', '12 PM', '6 PM', '12 AM'].map((lbl, idx) => (
-                    <Text key={idx} style={{ fontSize: 9, color: '#9CA3AF' }}>{lbl}</Text>
+                    <Text key={idx} style={{ fontSize: 9, color: '#9CA3AF' }}>
+                      {lbl}
+                    </Text>
                   ))}
                 </View>
                 {/* Timeline bar track */}
-                <View style={{ height: 8, backgroundColor: '#E0E7FF', borderRadius: 4, marginBottom: 10 }}>
+                <View
+                  style={{
+                    height: 8,
+                    backgroundColor: '#E0E7FF',
+                    borderRadius: 4,
+                    marginBottom: 10,
+                  }}
+                >
                   {todaySleepSessions.map((s, idx) => {
                     const startPct = timeToPercent(s.sleep_start);
-                    const endPct = s.sleep_end ? timeToPercent(s.sleep_end) : Math.min(startPct + 0.03, 1);
+                    const endPct = s.sleep_end
+                      ? timeToPercent(s.sleep_end)
+                      : Math.min(startPct + 0.03, 1);
                     const width = Math.max(endPct - startPct, 0.02);
                     const isNight = s.tracking_method === 'night';
                     return (
@@ -2060,17 +2083,28 @@ function HistoryScreen({
                 {/* Legend */}
                 <View style={{ flexDirection: 'row', gap: 14, marginBottom: 8 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#4F46E5' }} />
+                    <View
+                      style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#4F46E5' }}
+                    />
                     <Text style={{ fontSize: 10, color: C.muted }}>Night</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#A5B4FC' }} />
+                    <View
+                      style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#A5B4FC' }}
+                    />
                     <Text style={{ fontSize: 10, color: C.muted }}>Nap</Text>
                   </View>
                 </View>
                 {/* Session list */}
                 {todaySleepSessions.length === 0 ? (
-                  <Text style={{ fontSize: 12, color: C.muted, textAlign: 'center', paddingVertical: 8 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: C.muted,
+                      textAlign: 'center',
+                      paddingVertical: 8,
+                    }}
+                  >
                     No sleep logged today yet.
                   </Text>
                 ) : (
@@ -2094,7 +2128,9 @@ function HistoryScreen({
                             backgroundColor: isNight ? '#4F46E5' : '#A5B4FC',
                           }}
                         />
-                        <Text style={{ fontSize: 12, color: '#3730A3', fontWeight: '600', flex: 1 }}>
+                        <Text
+                          style={{ fontSize: 12, color: '#3730A3', fontWeight: '600', flex: 1 }}
+                        >
                           {isNight ? 'Night Sleep' : `Nap ${idx + 1}`}
                         </Text>
                         <Text style={{ fontSize: 11, color: C.muted }}>
@@ -2115,16 +2151,24 @@ function HistoryScreen({
             ) : (
               /* ── WEEKLY SLEEP BAR CHART ── */
               <View>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: '#3730A3', marginBottom: 6 }}>
+                <Text
+                  style={{ fontSize: 13, fontWeight: '800', color: '#3730A3', marginBottom: 6 }}
+                >
                   😴 Total Sleep — last 7 days
                 </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <View
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}
+                >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#4F46E5' }} />
+                    <View
+                      style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#4F46E5' }}
+                    />
                     <Text style={{ fontSize: 10, color: C.muted }}>Night</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#A5B4FC' }} />
+                    <View
+                      style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#A5B4FC' }}
+                    />
                     <Text style={{ fontSize: 10, color: C.muted }}>Nap</Text>
                   </View>
                 </View>
@@ -2139,11 +2183,21 @@ function HistoryScreen({
                         <Text style={{ fontSize: 8, color: C.muted, marginBottom: 2 }}>
                           {d.totalMins > 0 ? formatDuration(d.totalMins) : ''}
                         </Text>
-                        <View style={{ width: '100%', height: totalH, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end' }}>
+                        <View
+                          style={{
+                            width: '100%',
+                            height: totalH,
+                            borderRadius: 6,
+                            overflow: 'hidden',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
                           <View style={{ height: napH, backgroundColor: '#A5B4FC' }} />
                           <View style={{ height: nightH, backgroundColor: '#4F46E5' }} />
                         </View>
-                        <Text style={{ fontSize: 9, color: C.muted, marginTop: 4 }}>{DAY_LABELS[i]}</Text>
+                        <Text style={{ fontSize: 9, color: C.muted, marginTop: 4 }}>
+                          {DAY_LABELS[i]}
+                        </Text>
                       </View>
                     );
                   })}

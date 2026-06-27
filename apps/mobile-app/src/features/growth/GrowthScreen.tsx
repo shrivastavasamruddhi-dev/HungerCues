@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { C } from '../../constants/colors';
 import { Header } from '../../components/Header';
-import { api } from '../../api';
+import { growthService } from '../../services/growthService';
 import type { Baby, GrowthRecord } from '../../types';
 
 interface Props {
@@ -117,7 +117,7 @@ export function GrowthScreen({ baby, growth, unitSystem, setUnitSystem, onRefres
     }
     const growthTime = parsedDate;
     try {
-      await api.createGrowth({
+      await growthService.createGrowth({
         baby_id: baby.id,
         recorded_at: growthTime.toISOString(),
         weight_kg: w_kg,

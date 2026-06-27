@@ -10,7 +10,10 @@ import {
   View,
 } from 'react-native';
 import { C } from '../../constants/colors';
-import { api } from '../../api';
+import { feedingService } from '../../services/feedingService';
+import { sleepService } from '../../services/sleepService';
+import { diaperService } from '../../services/diaperService';
+import { growthService } from '../../services/growthService';
 import { formatEventTime } from '../../utils/date';
 import type { TimelineEvent, Feeding, SleepSession, DiaperChange } from '../../types';
 
@@ -219,13 +222,13 @@ export function HistoryScreen({
           if (isNaN(dbId)) return;
 
           if (kind === 'feed') {
-            await api.deleteFeeding(dbId);
+            await feedingService.deleteFeeding(dbId);
           } else if (kind === 'sleep') {
-            await api.deleteSleep(dbId);
+            await sleepService.deleteSleep(dbId);
           } else if (kind === 'diaper') {
-            await api.deleteDiaper(dbId);
+            await diaperService.deleteDiaper(dbId);
           } else if (kind === 'growth') {
-            await api.deleteGrowth(dbId);
+            await growthService.deleteGrowth(dbId);
           }
         }),
       );

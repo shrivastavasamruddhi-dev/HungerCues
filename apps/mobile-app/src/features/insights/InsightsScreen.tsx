@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { C } from '../../constants/colors';
 import { Header } from '../../components/Header';
-import { api } from '../../api';
+import { aiService } from '../../services/aiService';
 import type { Baby, Feeding, SleepSession, AIInsight, AIWeeklySummary } from '../../types';
 
 interface Props {
@@ -46,7 +46,7 @@ export function InsightsScreen({ baby, insight, loading, feedings, sleep, onGene
     setWeeklyLoading(true);
     setWeeklyError(null);
     try {
-      const data = await api.getWeeklySummary(baby.id);
+      const data = await aiService.getWeeklySummary(baby.id);
       setWeeklySummary(data);
     } catch {
       setWeeklyError('Could not generate weekly summary. Check backend connection.');
@@ -61,7 +61,7 @@ export function InsightsScreen({ baby, insight, loading, feedings, sleep, onGene
     setAskError(null);
     setAnswer(null);
     try {
-      const result = await api.askQuestion(baby.id, question.trim());
+      const result = await aiService.askQuestion(baby.id, question.trim());
       setAnswer(result.answer);
     } catch {
       setAskError('Could not reach the AI assistant. Check the backend connection and try again.');

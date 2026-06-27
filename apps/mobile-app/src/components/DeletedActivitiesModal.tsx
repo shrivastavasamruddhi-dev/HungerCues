@@ -13,7 +13,7 @@ import { C } from '../constants/colors';
 import { activityMeta } from '../constants/activityMeta';
 import { capitalize } from '../utils/text';
 import { formatEventTime } from '../utils/date';
-import { api } from '../api';
+import { babyService } from '../services/babyService';
 import { common } from '../styles/common';
 import type { Baby, Feeding, SleepSession, DiaperChange, GrowthRecord } from '../types';
 
@@ -50,7 +50,7 @@ export function DeletedActivitiesModal({ visible, onClose, baby, unitSystem, onR
     setLoading(true);
     setError(null);
     try {
-      const data = await api.listDeletedActivities(baby.id);
+      const data = await babyService.listDeletedActivities(baby.id);
       setDeletedData(data);
     } catch {
       setError('Could not fetch deleted activities.');
@@ -147,7 +147,7 @@ export function DeletedActivitiesModal({ visible, onClose, baby, unitSystem, onR
     const dbId = parseInt(dbIdStr, 10);
     if (isNaN(dbId)) return;
     try {
-      await api.restoreActivity(kind, dbId);
+      await babyService.restoreActivity(kind, dbId);
       await fetchDeleted();
       await onRestore();
     } catch {

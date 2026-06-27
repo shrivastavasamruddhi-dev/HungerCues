@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { C } from '../../constants/colors';
 import { Header } from '../../components/Header';
-import { api } from '../../api';
+import { milestoneService } from '../../services/milestoneService';
 import type { Baby, Milestone } from '../../types';
 
 interface Props {
@@ -46,7 +46,7 @@ export function MilestonesScreen({ baby }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.listMilestones(baby.id);
+      const data = await milestoneService.listMilestones(baby.id);
       setMilestones(data);
     } catch {
       setError('Could not load milestones. Check backend connection.');
@@ -67,7 +67,7 @@ export function MilestonesScreen({ baby }: Props) {
     if (existing) {
       // Uncheck / delete
       try {
-        await api.deleteMilestone(existing.id);
+        await milestoneService.deleteMilestone(existing.id);
         setMilestones((prev) => prev.filter((m) => m.id !== existing.id));
       } catch {
         setError('Could not delete milestone.');
@@ -82,7 +82,7 @@ export function MilestonesScreen({ baby }: Props) {
   const handleSaveMilestone = async () => {
     if (!baby || !activeMilestoneName) return;
     try {
-      const created = await api.createMilestone({
+      const created = await milestoneService.createMilestone({
         baby_id: baby.id,
         name: activeMilestoneName,
         achieved_at: new Date().toISOString().split('T')[0],
@@ -99,7 +99,7 @@ export function MilestonesScreen({ baby }: Props) {
   const handleSaveCustom = async () => {
     if (!baby || !customName.trim()) return;
     try {
-      const created = await api.createMilestone({
+      const created = await milestoneService.createMilestone({
         baby_id: baby.id,
         name: customName.trim(),
         achieved_at: new Date().toISOString().split('T')[0],
@@ -264,7 +264,7 @@ export function MilestonesScreen({ baby }: Props) {
               <TouchableOpacity
                 onPress={async () => {
                   try {
-                    await api.deleteMilestone(m.id);
+                    await milestoneService.deleteMilestone(m.id);
                     setMilestones((prev) => prev.filter((item) => item.id !== m.id));
                   } catch {
                     setError('Could not delete milestone.');

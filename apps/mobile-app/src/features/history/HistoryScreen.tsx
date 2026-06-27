@@ -8,6 +8,7 @@ import { FeedGraph } from './components/FeedGraph';
 import { SleepGraph } from './components/SleepGraph';
 import { DiaperSummary } from './components/DiaperSummary';
 import { RecentActivityList } from './components/RecentActivityList';
+import { HistoryModal } from './components/HistoryModal';
 import type { TimelineEvent, Feeding, SleepSession, DiaperChange } from '../../types';
 
 interface Props {
@@ -28,6 +29,7 @@ export function HistoryScreen({
   onBack,
 }: Props) {
   const [activeGraph, setActiveGraph] = useState<'feed' | 'sleep' | 'diaper'>('feed');
+  const [historyModalVisible, setHistoryModalVisible] = useState<boolean>(false);
 
   const {
     recent,
@@ -153,11 +155,21 @@ export function HistoryScreen({
       )}
 
       {/* ── Recent Activity ── */}
-      <RecentActivityList
-        recent={recent}
+      <RecentActivityList recent={recent} onPress={() => setHistoryModalVisible(true)} />
+
+      <HistoryModal
+        visible={historyModalVisible}
+        onClose={() => {
+          setSelectedIds([]);
+          setHistoryModalVisible(false);
+        }}
+        events={events}
         selectedIds={selectedIds}
+        setSelectedIds={setSelectedIds}
         handleLongPress={handleLongPress}
         handlePress={handlePress}
+        handleDeleteSelected={handleDeleteSelected}
+        onRefreshData={onRefreshData}
       />
     </View>
   );

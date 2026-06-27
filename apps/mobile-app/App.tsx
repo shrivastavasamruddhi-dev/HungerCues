@@ -382,7 +382,7 @@ export default function App() {
             <View style={{ paddingBottom: 40 }}>
               <Header
                 title="Notification Center"
-                action="âœ•"
+                action="✕"
                 onPress={() => setShowNotifications(false)}
               />
               <View
@@ -577,7 +577,7 @@ export default function App() {
             <View style={common.menuHeader}>
               <Text style={common.menuTitle}>Log Options</Text>
               <TouchableOpacity onPress={() => setShowLogMenu(false)} style={common.menuCloseBtn}>
-                <Text style={{ fontSize: 16, color: C.muted, fontWeight: '700' }}>âœ•</Text>
+                <Text style={{ fontSize: 16, color: C.muted, fontWeight: '700' }}>✕</Text>
               </TouchableOpacity>
             </View>
 
@@ -590,7 +590,7 @@ export default function App() {
               }}
             >
               <View style={common.menuIconCircle}>
-                <Text style={common.menuIcon}>â—´</Text>
+                <Text style={common.menuIcon}>📋</Text>
               </View>
               <Text style={common.menuItemText}>View History</Text>
             </TouchableOpacity>
@@ -603,7 +603,7 @@ export default function App() {
               }}
             >
               <View style={[common.menuIconCircle, { backgroundColor: '#FEE2E2' }]}>
-                <Text style={[common.menuIcon, { color: '#EF4444' }]}>ðŸ—‘</Text>
+                <Text style={[common.menuIcon, { color: '#EF4444' }]}>🗑️</Text>
               </View>
               <Text style={common.menuItemText}>Deleted Activities</Text>
             </TouchableOpacity>

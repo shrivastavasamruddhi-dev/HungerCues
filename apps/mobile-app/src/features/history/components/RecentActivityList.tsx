@@ -8,77 +8,97 @@ import type { TimelineEvent } from '../../../types';
 
 interface Props {
   recent: TimelineEvent[];
-  selectedIds: string[];
-  handleLongPress: (id: string) => void;
-  handlePress: (id: string) => void;
+  onPress: () => void;
 }
 
-export function RecentActivityList({ recent, selectedIds, handleLongPress, handlePress }: Props) {
+export function RecentActivityList({ recent, onPress }: Props) {
+  const displayedEvents = recent.slice(0, 3);
+
   return (
     <View style={{ marginTop: 8 }}>
       <SectionTitle>Recent activity</SectionTitle>
-      {!recent.length && (
+
+      {displayedEvents.length === 0 ? (
         <EmptyState title="No activity yet" description="Use Quick Log to save the first moment." />
-      )}
-      {recent.map((event) => {
-        const isSelected = selectedIds.includes(event.id);
-        return (
-          <TouchableOpacity
-            key={event.id}
-            onLongPress={() => handleLongPress(event.id)}
-            onPress={() => handlePress(event.id)}
-            delayLongPress={500}
-            activeOpacity={0.8}
-            style={[
-              styles.eventCard,
-              {
-                borderWidth: 2,
-                borderColor: isSelected ? C.purple : 'transparent',
-                backgroundColor: isSelected ? C.purpleSoft : C.card,
-              },
-            ]}
-          >
-            <View style={styles.eventIcon}>
-              <Text style={styles.purpleText}>{event.icon}</Text>
-            </View>
-            <View style={styles.eventBody}>
-              <Text style={styles.eventTitle}>{event.title}</Text>
-              <Text style={styles.eventMeta}>
-                {formatEventTime(event.occurredAt)} · {event.note}
-              </Text>
-            </View>
-            {isSelected && (
-              <View style={{ marginLeft: 8, marginRight: 4 }}>
-                <Text style={{ fontSize: 16, color: C.purpleDark, fontWeight: '900' }}>✓</Text>
+      ) : (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.containerCard}>
+          {displayedEvents.map((event, index) => (
+            <View key={event.id}>
+              {index > 0 && <View style={styles.divider} />}
+              <View style={styles.eventRow}>
+                <View style={styles.eventIcon}>
+                  <Text style={styles.purpleText}>{event.icon}</Text>
+                </View>
+                <View style={styles.eventBody}>
+                  <Text style={styles.eventTitle}>{event.title}</Text>
+                  <Text style={styles.eventMeta}>
+                    {formatEventTime(event.occurredAt)} · {event.note}
+                  </Text>
+                </View>
               </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
+            </View>
+          ))}
+
+          <View style={styles.footerRow}>
+            <Text style={styles.footerText}>View Full History</Text>
+            <Text style={styles.footerArrow}>→</Text>
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  eventCard: {
-    minHeight: 72,
-    borderRadius: 20,
+  containerCard: {
+    borderRadius: 24,
     backgroundColor: C.card,
-    padding: 12,
+    padding: 16,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+  },
+  eventRow: {
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginVertical: 4,
   },
   eventIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: C.purpleSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   eventBody: { marginLeft: 12, flex: 1 },
-  eventTitle: { fontSize: 15, fontWeight: '700' },
+  eventTitle: { fontSize: 14, fontWeight: '700' },
   eventMeta: { fontSize: 10, color: C.muted, marginTop: 4 },
   purpleText: { color: C.purpleDark },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
+  },
+  footerText: {
+    fontSize: 12,
+    color: C.purple,
+    fontWeight: '700',
+  },
+  footerArrow: {
+    fontSize: 14,
+    color: C.purple,
+    fontWeight: '800',
+    marginLeft: 4,
+  },
 });

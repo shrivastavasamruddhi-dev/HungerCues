@@ -35,6 +35,7 @@ import { C } from './src/constants/colors';
 import { activityMeta } from './src/constants/activityMeta';
 import { capitalize } from './src/utils/text';
 import { formatEventTime, formatElapsed, getCustomDateTime } from './src/utils/date';
+import { common } from './src/styles/common';
 
 type Tab = 'home' | 'log' | 'history' | 'insights' | 'milestones' | 'growth';
 type Activity = 'feed' | 'sleep' | 'diaper' | 'growth';
@@ -364,11 +365,11 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={common.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={C.canvas} />
-      <View style={[styles.shell, !compact && styles.desktopShell]}>
+      <View style={[common.shell, !compact && common.desktopShell]}>
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={common.scroll}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -379,20 +380,20 @@ export default function App() {
           }
         >
           {notice && (
-            <View style={styles.notice}>
-              <Text style={styles.noticeText}>✓ {notice}</Text>
+            <View style={common.notice}>
+              <Text style={common.noticeText}>✓ {notice}</Text>
             </View>
           )}
           {error && (
-            <TouchableOpacity style={styles.errorBanner} onPress={() => void loadData()}>
-              <Text style={styles.errorText}>{error}</Text>
-              <Text style={styles.retryText}>Tap to retry</Text>
+            <TouchableOpacity style={common.errorBanner} onPress={() => void loadData()}>
+              <Text style={common.errorText}>{error}</Text>
+              <Text style={common.retryText}>Tap to retry</Text>
             </TouchableOpacity>
           )}
           {loading && !baby ? (
-            <View style={styles.loadingState}>
+            <View style={common.loadingState}>
               <ActivityIndicator size="large" color={C.purple} />
-              <Text style={styles.loadingText}>Loading Charlie's day...</Text>
+              <Text style={common.loadingText}>Loading Charlie's day...</Text>
             </View>
           ) : null}
           {showNotifications ? (
@@ -588,43 +589,43 @@ export default function App() {
         onRequestClose={() => setShowLogMenu(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={common.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowLogMenu(false)}
         >
-          <View style={styles.menuContainer}>
-            <View style={styles.menuHeader}>
-              <Text style={styles.menuTitle}>Log Options</Text>
-              <TouchableOpacity onPress={() => setShowLogMenu(false)} style={styles.menuCloseBtn}>
+          <View style={common.menuContainer}>
+            <View style={common.menuHeader}>
+              <Text style={common.menuTitle}>Log Options</Text>
+              <TouchableOpacity onPress={() => setShowLogMenu(false)} style={common.menuCloseBtn}>
                 <Text style={{ fontSize: 16, color: C.muted, fontWeight: '700' }}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-              style={styles.menuItem}
+              style={common.menuItem}
               onPress={() => {
                 setShowLogMenu(false);
                 setPreviousTab(tab);
                 setTab('history');
               }}
             >
-              <View style={styles.menuIconCircle}>
-                <Text style={styles.menuIcon}>◴</Text>
+              <View style={common.menuIconCircle}>
+                <Text style={common.menuIcon}>◴</Text>
               </View>
-              <Text style={styles.menuItemText}>View History</Text>
+              <Text style={common.menuItemText}>View History</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.menuItem, { borderBottomWidth: 0 }]}
+              style={[common.menuItem, { borderBottomWidth: 0 }]}
               onPress={() => {
                 setShowLogMenu(false);
                 setShowDeletedModal(true);
               }}
             >
-              <View style={[styles.menuIconCircle, { backgroundColor: '#FEE2E2' }]}>
-                <Text style={[styles.menuIcon, { color: '#EF4444' }]}>🗑</Text>
+              <View style={[common.menuIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                <Text style={[common.menuIcon, { color: '#EF4444' }]}>🗑</Text>
               </View>
-              <Text style={styles.menuItemText}>Deleted Activities</Text>
+              <Text style={common.menuItemText}>Deleted Activities</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

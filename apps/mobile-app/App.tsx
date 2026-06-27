@@ -36,6 +36,7 @@ import { activityMeta } from './src/constants/activityMeta';
 import { capitalize } from './src/utils/text';
 import { formatEventTime, formatElapsed, getCustomDateTime } from './src/utils/date';
 import { common } from './src/styles/common';
+import { useActiveSleepTimer } from './src/hooks/useActiveSleepTimer';
 
 type Tab = 'home' | 'log' | 'history' | 'insights' | 'milestones' | 'growth';
 type Activity = 'feed' | 'sleep' | 'diaper' | 'growth';
@@ -77,7 +78,7 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [activeSleepStart, setActiveSleepStart] = useState<string | null>(null);
   const [sleepTrackingMode, setSleepTrackingMode] = useState<'timer' | 'manual'>('timer');
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const elapsedSeconds = useActiveSleepTimer(activeSleepStart);
   const [customTimeEnabled, setCustomTimeEnabled] = useState(false);
   const [customTime, setCustomTime] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -85,23 +86,6 @@ export default function App() {
   const [showLogMenu, setShowLogMenu] = useState(false);
   const [showDeletedModal, setShowDeletedModal] = useState(false);
   const compact = width < 430;
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
-    if (activeSleepStart) {
-      const start = new Date(activeSleepStart).getTime();
-      const update = () => {
-        setElapsedSeconds(Math.max(0, Math.floor((Date.now() - start) / 1000)));
-      };
-      update();
-      interval = setInterval(update, 1000);
-    } else {
-      setElapsedSeconds(0);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [activeSleepStart]);
 
   const loadData = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);

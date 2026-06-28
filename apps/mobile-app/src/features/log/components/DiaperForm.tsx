@@ -1,17 +1,38 @@
 import React from 'react';
 import { Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { C } from '../../../constants/colors';
+import { CustomTimeSelector } from './CustomTimeSelector';
 
 interface Props {
   notes: string;
   setNotes: (val: string) => void;
   saving: boolean;
   onLog: () => Promise<void>;
+  customTimeEnabled: boolean;
+  setCustomTimeEnabled: (val: boolean) => void;
+  customTime: string;
+  setCustomTime: (val: string) => void;
 }
 
-export function DiaperForm({ notes, setNotes, saving, onLog }: Props) {
+export function DiaperForm({
+  notes,
+  setNotes,
+  saving,
+  onLog,
+  customTimeEnabled,
+  setCustomTimeEnabled,
+  customTime,
+  setCustomTime,
+}: Props) {
   return (
     <>
+      <CustomTimeSelector
+        customTimeEnabled={customTimeEnabled}
+        setCustomTimeEnabled={setCustomTimeEnabled}
+        customTime={customTime}
+        setCustomTime={setCustomTime}
+      />
+
       <Text style={styles.inputLabel}>Notes (optional)</Text>
       <TextInput
         accessibilityLabel="Notes"

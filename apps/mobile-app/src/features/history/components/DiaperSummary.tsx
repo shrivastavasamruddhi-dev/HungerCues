@@ -5,7 +5,7 @@ interface Props {
   diaperTodayData: {
     count: number;
     wet: number;
-    dirty: number;
+    poopyMixed: number;
     lastChange: string | null;
   };
   formatTime12: (iso: string) => string;
@@ -41,14 +41,14 @@ export function DiaperSummary({ diaperTodayData, formatTime12 }: Props) {
               <Text style={{ fontSize: 10, color: '#1E40AF' }}>Wet</Text>
             </View>
           </View>
-          {/* Dirty */}
+          {/* Poopy / Mixed */}
           <View style={styles.diaperSubCardDirty}>
             <Text style={{ fontSize: 18 }}>💛</Text>
             <View>
               <Text style={{ fontSize: 18, fontWeight: '800', color: '#92400E' }}>
-                {diaperTodayData.dirty}
+                {diaperTodayData.poopyMixed}
               </Text>
-              <Text style={{ fontSize: 10, color: '#78350F' }}>Dirty / Both</Text>
+              <Text style={{ fontSize: 10, color: '#78350F' }}>Poopy/mixed</Text>
             </View>
           </View>
         </View>

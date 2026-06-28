@@ -100,10 +100,13 @@ export function useHistoryData({ feedings, sleepSessions, diapers, events }: Par
     const sorted = [...todayDiapers].sort(
       (a, b) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime(),
     );
+    const normalizedDiaperTypes = todayDiapers.map((d) => d.type.trim().toLowerCase());
     return {
       count: todayDiapers.length,
-      wet: todayDiapers.filter((d) => d.type === 'wet').length,
-      dirty: todayDiapers.filter((d) => d.type === 'dirty' || d.type === 'both').length,
+      wet: normalizedDiaperTypes.filter((type) => type === 'wet').length,
+      poopyMixed: normalizedDiaperTypes.filter((type) =>
+        ['poopy', 'mixed', 'dry', 'dirty', 'both'].includes(type),
+      ).length,
       lastChange: sorted[0]?.changed_at ?? null,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -279,9 +279,19 @@ export default function App() {
           });
         }
       } else if (activity === 'diaper') {
+        let changeTime = now;
+        if (customTimeEnabled) {
+          const customDate = getCustomDateTime(customTime);
+          if (!customDate) {
+            setError('Please enter a valid time in HH:MM format (e.g. 14:30)');
+            setSaving(false);
+            return;
+          }
+          changeTime = customDate;
+        }
         await api.createDiaper({
           baby_id: baby.id,
-          changed_at: now.toISOString(),
+          changed_at: changeTime.toISOString(),
           type: subtype.toLowerCase(),
           notes: notes || null,
         });

@@ -87,7 +87,7 @@ export function LogScreen({
       ? ['Breast', 'Bottle', 'Solid']
       : activity === 'sleep'
         ? ['Nap', 'Night', 'Rest']
-        : ['Wet', 'Mixed', 'Dry'];
+        : ['Wet', 'Poopy', 'Mixed'];
 
   return (
     <View>
@@ -178,7 +178,16 @@ export function LogScreen({
         )}
 
         {activity === 'diaper' && (
-          <DiaperForm notes={notes} setNotes={setNotes} saving={saving} onLog={onLog} />
+          <DiaperForm
+            notes={notes}
+            setNotes={setNotes}
+            saving={saving}
+            onLog={onLog}
+            customTimeEnabled={customTimeEnabled}
+            setCustomTimeEnabled={setCustomTimeEnabled}
+            customTime={customTime}
+            setCustomTime={setCustomTime}
+          />
         )}
 
         {activity === 'growth' && (

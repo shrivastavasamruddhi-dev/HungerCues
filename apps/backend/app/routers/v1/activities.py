@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -33,7 +33,7 @@ async def list_deleted_activities(
     firebase_uid: str = Depends(get_current_firebase_uid),
 ):
     # Fetch soft-deleted records from the last 24 hours
-    cutoff = datetime.utcnow() - timedelta(hours=24)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
 
     # 1. Feedings
     feeding_stmt = select(Feeding).where(

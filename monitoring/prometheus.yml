@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # ── Backend FastAPI metrics (via prometheus-fastapi-instrumentator) ─────────
+  - job_name: "baby-tracker-backend"
+    static_configs:
+      - targets: ["backend:8000"]
+    metrics_path: /metrics
+
+  # ── Prometheus itself ────────────────────────────────────────────────────────
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── cAdvisor — Docker container resource metrics ─────────────────────────────
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  # Uncomment when redis-exporter is added:
+  # - job_name: "redis"
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]

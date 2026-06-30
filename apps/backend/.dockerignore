@@ -1,0 +1,36 @@
+# Python virtual environment and cache
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# Local databases (never in container)
+*.db
+*.db-journal
+*.sqlite
+
+# Environment files (secrets must be injected at runtime)
+.env
+.env.*
+*.env
+
+# Development and test files
+tests/
+.coverage
+htmlcov/
+*.log
+
+# Editor and OS files
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

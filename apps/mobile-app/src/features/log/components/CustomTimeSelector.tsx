@@ -55,46 +55,13 @@ export function CustomTimeSelector({
           <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600', marginBottom: 4 }}>
             Start Time (HH:MM)
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TextInput
-              value={customTime}
-              onChangeText={setCustomTime}
-              placeholder="14:30"
-              placeholderTextColor="#A9A9A9"
-              style={[styles.input, { flex: 1, height: 40, marginBottom: 0 }]}
-            />
-
-            {/* Offset Helpers */}
-            <View style={{ flexDirection: 'row', marginLeft: 8 }}>
-              {[
-                { label: '-5m', val: 5 },
-                { label: '-15m', val: 15 },
-                { label: '-30m', val: 30 },
-                { label: '-1h', val: 60 },
-              ].map((offset) => (
-                <TouchableOpacity
-                  key={offset.label}
-                  onPress={() => {
-                    const target = new Date(Date.now() - offset.val * 60 * 1000);
-                    const hh = String(target.getHours()).padStart(2, '0');
-                    const mm = String(target.getMinutes()).padStart(2, '0');
-                    setCustomTime(`${hh}:${mm}`);
-                  }}
-                  style={{
-                    backgroundColor: C.purpleSoft,
-                    paddingHorizontal: 8,
-                    paddingVertical: 8,
-                    borderRadius: 4,
-                    marginLeft: 4,
-                  }}
-                >
-                  <Text style={{ color: C.purpleDark, fontSize: 11, fontWeight: '700' }}>
-                    {offset.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+          <TextInput
+            value={customTime}
+            onChangeText={setCustomTime}
+            placeholder="14:30"
+            placeholderTextColor="#A9A9A9"
+            style={[styles.input, { height: 40, marginBottom: 0 }]}
+          />
         </View>
       )}
     </View>

@@ -86,6 +86,6 @@ async def delete_feeding(
     feeding = result.scalar_one_or_none()
     if not feeding:
         raise HTTPException(status_code=404, detail="Feeding record not found")
-    feeding.deleted_at = datetime.utcnow()
+    feeding.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     return {"status": "success"}

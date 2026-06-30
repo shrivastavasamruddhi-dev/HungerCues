@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from pydantic import BaseModel
 
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
+from app.middleware.rate_limit import AUTH_LIMIT, limiter
 from app.models.user import User
 
 router = APIRouter()
@@ -16,8 +17,7 @@ class UserSchema(BaseModel):
     email: str
     display_name: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class RegisterRequest(BaseModel):
@@ -26,7 +26,9 @@ class RegisterRequest(BaseModel):
 
 
 @router.get("/me", response_model=UserSchema)
+@limiter.limit(AUTH_LIMIT)
 async def get_me(
+    request: Request,
     firebase_uid: str = Depends(get_current_firebase_uid),
     db: AsyncSession = Depends(get_db),
 ):
@@ -49,7 +51,9 @@ async def get_me(
 
 
 @router.post("/register", response_model=UserSchema)
+@limiter.limit(AUTH_LIMIT)
 async def register(
+    request: Request,
     req: RegisterRequest,
     firebase_uid: str = Depends(get_current_firebase_uid),
     db: AsyncSession = Depends(get_db),

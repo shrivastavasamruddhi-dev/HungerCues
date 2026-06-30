@@ -1,0 +1,62 @@
+version: 2
+
+updates:
+  # -----------------------------------------------------------------------
+  # GitHub Actions — keep workflow action versions up to date
+  # -----------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"
+
+  # -----------------------------------------------------------------------
+  # Backend — Python (uv / pip)
+  # -----------------------------------------------------------------------
+  - package-ecosystem: "pip"
+    directory: "/apps/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "backend"
+    # Open at most 5 PRs at once to avoid noise
+    open-pull-requests-limit: 5
+    ignore:
+      # Only accept patch/minor updates automatically;
+      # major version bumps need manual review
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # -----------------------------------------------------------------------
+  # Mobile — npm
+  # -----------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/apps/mobile-app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "mobile"
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # -----------------------------------------------------------------------
+  # Monorepo root — npm (pnpm workspace root)
+  # -----------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "root"
+    open-pull-requests-limit: 3

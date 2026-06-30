@@ -1,35 +1,39 @@
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
+from app.middleware.rate_limit import AI_LIMIT, limiter
 from app.models.baby import Baby
-from app.models.feeding import Feeding
-from app.models.sleep import SleepSession
 from app.models.diaper import DiaperChange
+from app.models.feeding import Feeding
 from app.models.growth import GrowthRecord
-from app.services.ai.service import AIService
+from app.models.sleep import SleepSession
 from app.services.ai.schemas import (
     AIInsightRequest,
     AIInsightResponse,
+    AIQuestionRequest,
+    AIQuestionResponse,
     AIWeeklySummaryRequest,
     AIWeeklySummaryResponse,
     DiaperLogInput,
     FeedingLogInput,
     GrowthLogInput,
     SleepLogInput,
-    AIQuestionRequest,
-    AIQuestionResponse,
 )
+from app.services.ai.service import AIService
 
 router = APIRouter()
 ai_service = AIService()
 
 
 @router.post("/insights/{baby_id}", response_model=AIInsightResponse)
+@limiter.limit(AI_LIMIT)
 async def get_insights(
+    request: Request,
     baby_id: int,
     db: AsyncSession = Depends(get_db),
     firebase_uid: str = Depends(get_current_firebase_uid),
@@ -84,7 +88,9 @@ async def get_insights(
 
 
 @router.post("/ask/{baby_id}", response_model=AIQuestionResponse)
+@limiter.limit(AI_LIMIT)
 async def ask_question(
+    request: Request,
     baby_id: int,
     question_in: AIQuestionRequest,
     db: AsyncSession = Depends(get_db),
@@ -141,7 +147,9 @@ async def ask_question(
 
 
 @router.post("/weekly-summary/{baby_id}", response_model=AIWeeklySummaryResponse)
+@limiter.limit(AI_LIMIT)
 async def get_weekly_summary(
+    request: Request,
     baby_id: int,
     db: AsyncSession = Depends(get_db),
     firebase_uid: str = Depends(get_current_firebase_uid),

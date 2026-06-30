@@ -45,30 +45,44 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def verify_and_setup_db() -> None:
-    """Verify the database connection. Fallback to SQLite if Postgres is unavailable."""
+    """
+    Verify database connectivity and initialise schema.
+
+    Production (PostgreSQL):
+      - Verifies the connection is reachable.
+      - Does NOT call create_all — schema is owned by Alembic migrations.
+        Run `alembic upgrade head` before starting the app in production.
+
+    Development / Test (SQLite):
+      - Falls back to a local SQLite file if PostgreSQL is unreachable.
+      - Calls create_all for zero-config local development.
+    """
     global engine, async_session
-    sqlite_fallback = False
+    use_sqlite = False
 
     if "postgresql" in db_url:
         try:
-            logger.info("Attempting to connect to PostgreSQL...")
-            # Create a temporary connection to verify
+            logger.info("Verifying PostgreSQL connection...")
             temp_engine = create_async_engine(
                 db_url,
-                connect_args={"timeout": 3},  # short timeout for quick fallback
+                connect_args={"timeout": 3},
             )
             async with temp_engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
             await temp_engine.dispose()
-            logger.info("PostgreSQL connection verified successfully.")
+            logger.info("PostgreSQL connection verified.")
         except Exception as e:
             logger.warning(
-                f"PostgreSQL connection failed: {e}. Falling back to SQLite..."
+                "PostgreSQL unavailable: %s — falling back to SQLite (dev/test only).", e
             )
-            sqlite_fallback = True
+            use_sqlite = True
 
-    if sqlite_fallback or "sqlite" in db_url:
-        db_name = "test_baby_tracker.db" if os.environ.get("PYTEST_CURRENT_TEST") else "baby_tracker.db"
+    if use_sqlite or "sqlite" in db_url:
+        db_name = (
+            "test_baby_tracker.db"
+            if os.environ.get("PYTEST_CURRENT_TEST")
+            else "baby_tracker.db"
+        )
         fallback_url = f"sqlite+aiosqlite:///./{db_name}"
         engine = create_async_engine(
             fallback_url,
@@ -80,22 +94,38 @@ async def verify_and_setup_db() -> None:
             class_=AsyncSession,
             expire_on_commit=False,
         )
-        logger.info(f"Database engine set to SQLite: {fallback_url}")
+        logger.info("Using SQLite for local dev/test: %s", fallback_url)
 
-    # Auto-create all tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        # Safely attempt to add breast_side column to feedings table in case of an existing DB
-        try:
-            await conn.execute(text("ALTER TABLE feedings ADD COLUMN breast_side VARCHAR(20)"))
-        except Exception:
-            pass
-        # Safely attempt to add deleted_at columns for soft deletion
-        for table in ["feedings", "sleep_sessions", "diaper_changes", "growth_records"]:
-            try:
-                await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN deleted_at DATETIME"))
-            except Exception:
-                pass
-    logger.info("Database schema initialized (tables created).")
+        # Dev/test only: auto-create tables so local setup needs no migrations
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            # Safely apply additive SQLite-only schema patches
+            for stmt in [
+                "ALTER TABLE feedings ADD COLUMN breast_side VARCHAR(20)",
+                *[
+                    f"ALTER TABLE {t} ADD COLUMN deleted_at DATETIME"
+                    for t in ["feedings", "sleep_sessions", "diaper_changes", "growth_records"]
+                ],
+            ]:
+                try:
+                    await conn.execute(text(stmt))
+                except Exception:
+                    pass  # Column already exists — safe to ignore
+        logger.info("SQLite schema initialised (create_all).")
+
+    else:
+        # PostgreSQL: schema is managed entirely by Alembic.
+        # In production the CD pipeline runs `alembic upgrade head` before
+        # starting the container. We only re-bind the sessionmaker here.
+        async_session = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+        logger.info(
+            "PostgreSQL ready. Schema managed by Alembic — "
+            "ensure `alembic upgrade head` was run before startup."
+        )
+
 
 

@@ -36,5 +36,32 @@ class Settings(BaseSettings):
     # App
     environment: str = "development"
 
+    # Security — CORS
+    # Comma-separated list of allowed origins, e.g.:
+    # "https://app.example.com,https://www.example.com"
+    # Defaults to localhost for development.
+    allowed_origins: str = "http://localhost:3000,http://localhost:8081,exp://localhost:8081"
+
+    # Security — Rate Limiting
+    rate_limit_per_minute: int = 60          # General API rate limit
+    ai_rate_limit_per_minute: int = 10       # Stricter limit for AI endpoints
+    auth_rate_limit_per_minute: int = 20     # Limit for auth endpoints
+
+    # Observability — Sentry
+    sentry_dsn: str = ""                     # Set in production via env var
+    sentry_traces_sample_rate: float = 0.1  # 10% of transactions traced
+
+    # Redis + Celery
+    redis_url: str = "redis://localhost:6379/0"
+    celery_broker_url: str = ""  # Falls back to redis_url if empty
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
+
+    @property
+    def parsed_allowed_origins(self) -> list[str]:
+        return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
+
 
 settings = Settings()

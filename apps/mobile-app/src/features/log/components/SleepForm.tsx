@@ -125,12 +125,14 @@ export function SleepForm({
         <View>
           <View style={styles.formRow}>
             <View style={styles.formField}>
-              <Text style={styles.inputLabel}>Duration (min)</Text>
+              <Text style={styles.inputLabel}>Duration (HH:MM)</Text>
               <TextInput
-                accessibilityLabel="Duration in minutes"
+                accessibilityLabel="Duration in hours and minutes"
                 value={duration}
                 onChangeText={setDuration}
-                keyboardType="numeric"
+                keyboardType="numbers-and-punctuation"
+                placeholder="01:30"
+                placeholderTextColor="#A9A9A9"
                 style={styles.input}
               />
             </View>

@@ -27,3 +27,23 @@ export function getCustomDateTime(timeStr: string): Date | null {
   }
   return d;
 }
+
+export function parseDurationHHMM(value: string): number | null {
+  const parts = value.trim().split(':');
+  if (parts.length !== 2) return null;
+
+  const hours = Number(parts[0]);
+  const minutes = Number(parts[1]);
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+
+  const totalMinutes = hours * 60 + minutes;
+  return totalMinutes > 0 ? totalMinutes : null;
+}

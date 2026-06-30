@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -31,7 +33,7 @@ import {
 import { C } from './src/constants/colors';
 import { activityMeta } from './src/constants/activityMeta';
 import { capitalize } from './src/utils/text';
-import { formatElapsed, getCustomDateTime } from './src/utils/date';
+import { formatElapsed, getCustomDateTime, parseDurationHHMM } from './src/utils/date';
 import { common } from './src/styles/common';
 import { useActiveSleepTimer } from './src/hooks/useActiveSleepTimer';
 
@@ -132,7 +134,7 @@ export default function App() {
       activity === 'feed'
         ? { type: feedType, amount: '120', duration: '15' }
         : activity === 'sleep'
-          ? { type: 'Nap', amount: '', duration: '60' }
+          ? { type: 'Nap', amount: '', duration: '01:00' }
           : activity === 'diaper'
             ? { type: 'Wet', amount: '', duration: '' }
             : { type: 'Growth', amount: '', duration: '' };
@@ -257,7 +259,12 @@ export default function App() {
           });
           setActiveSleepStart(null);
         } else {
-          const minutes = Number(duration) || 60;
+          const minutes = parseDurationHHMM(duration);
+          if (minutes === null) {
+            setError('Please enter sleep duration in HH:MM format (e.g. 01:30)');
+            setSaving(false);
+            return;
+          }
           let startTime = new Date(now.getTime() - minutes * 60_000);
           if (customTimeEnabled) {
             const customDate = getCustomDateTime(customTime);
@@ -359,217 +366,227 @@ export default function App() {
   return (
     <SafeAreaView style={common.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={C.canvas} />
-      <View style={[common.shell, !compact && common.desktopShell]}>
-        <ScrollView
-          contentContainerStyle={common.scroll}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading}
-              onRefresh={() => void loadData()}
-              tintColor={C.purple}
-            />
-          }
-        >
-          {notice && (
-            <View style={common.notice}>
-              <Text style={common.noticeText}>âœ“ {notice}</Text>
-            </View>
-          )}
-          {error && (
-            <TouchableOpacity style={common.errorBanner} onPress={() => void loadData()}>
-              <Text style={common.errorText}>{error}</Text>
-              <Text style={common.retryText}>Tap to retry</Text>
-            </TouchableOpacity>
-          )}
-          {loading && !baby ? (
-            <View style={common.loadingState}>
-              <ActivityIndicator size="large" color={C.purple} />
-              <Text style={common.loadingText}>Loading Charlie's day...</Text>
-            </View>
-          ) : null}
-          {showNotifications ? (
-            <View style={{ paddingBottom: 40 }}>
-              <Header
-                title="Notification Center"
-                action="✕"
-                onPress={() => setShowNotifications(false)}
+      <KeyboardAvoidingView
+        style={common.safeArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={[common.shell, !compact && common.desktopShell]}>
+          <ScrollView
+            contentContainerStyle={common.scroll}
+            contentInsetAdjustmentBehavior="automatic"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={() => void loadData()}
+                tintColor={C.purple}
               />
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 20,
-                }}
-              >
-                <SectionTitle>Recent Alerts</SectionTitle>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      try {
-                        const data = await api.listRecentNotifications();
-                        setNotifications(data);
-                      } catch {}
-                    }}
-                    style={{
-                      backgroundColor: C.purpleSoft,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 12,
-                    }}
-                  >
-                    <Text style={{ color: C.purpleDark, fontWeight: '700', fontSize: 12 }}>
-                      Refresh
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      try {
-                        await api.clearNotifications();
-                        setNotifications([]);
-                      } catch {}
-                    }}
-                    style={{
-                      backgroundColor: '#FEE2E2',
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 12,
-                    }}
-                  >
-                    <Text style={{ color: '#EF4444', fontWeight: '700', fontSize: 12 }}>Clear</Text>
-                  </TouchableOpacity>
-                </View>
+            }
+          >
+            {notice && (
+              <View style={common.notice}>
+                <Text style={common.noticeText}>âœ“ {notice}</Text>
               </View>
-
-              {!notifications.length ? (
-                <EmptyState
-                  title="No notifications"
-                  description="All caught up! Active alerts will appear here."
-                />
-              ) : (
-                notifications.map((n) => (
-                  <SwipeableNotification
-                    key={n.id}
-                    notification={n}
-                    onDismiss={async () => {
-                      try {
-                        await api.deleteNotification(n.id);
-                      } catch {}
-                      setNotifications((prev) => prev.filter((x) => x.id !== n.id));
-                    }}
-                  />
-                ))
-              )}
-
-              <TouchableOpacity
-                onPress={() => setShowNotifications(false)}
-                style={[styles.logButton, { marginTop: 20, backgroundColor: '#ECECEC' }]}
-              >
-                <Text style={{ color: C.ink, fontWeight: '700' }}>Close</Text>
+            )}
+            {error && (
+              <TouchableOpacity style={common.errorBanner} onPress={() => void loadData()}>
+                <Text style={common.errorText}>{error}</Text>
+                <Text style={common.retryText}>Tap to retry</Text>
               </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              {tab === 'home' && (
-                <HomeScreen
-                  baby={baby}
-                  events={visibleEvents}
-                  feedings={feedings}
-                  diapers={diapers}
-                  filter={filter}
-                  setFilter={setFilter}
-                  onQuickLog={(kind) => {
-                    setActivity(kind);
-                    setTab('log');
+            )}
+            {loading && !baby ? (
+              <View style={common.loadingState}>
+                <ActivityIndicator size="large" color={C.purple} />
+                <Text style={common.loadingText}>Loading Charlie's day...</Text>
+              </View>
+            ) : null}
+            {showNotifications ? (
+              <View style={{ paddingBottom: 40 }}>
+                <Header
+                  title="Notification Center"
+                  action="✕"
+                  onPress={() => setShowNotifications(false)}
+                />
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 20,
                   }}
-                  activeSleepStart={activeSleepStart}
-                  elapsedSeconds={elapsedSeconds}
-                  formatElapsed={formatElapsed}
-                  notifications={notifications}
-                  onPressNotifications={() => setShowNotifications(true)}
-                />
-              )}
-              {tab === 'log' && (
-                <LogScreen
-                  activity={activity}
-                  setActivity={setActivity}
-                  feedType={feedType}
-                  setFeedType={setFeedType}
-                  subtype={subtype}
-                  setSubtype={setSubtype}
-                  amount={amount}
-                  setAmount={setAmount}
-                  duration={duration}
-                  setDuration={setDuration}
-                  notes={notes}
-                  setNotes={setNotes}
-                  saving={saving}
-                  onLog={logActivity}
-                  activeSleepStart={activeSleepStart}
-                  setActiveSleepStart={setActiveSleepStart}
-                  sleepTrackingMode={sleepTrackingMode}
-                  setSleepTrackingMode={setSleepTrackingMode}
-                  elapsedSeconds={elapsedSeconds}
-                  formatElapsed={formatElapsed}
-                  customTimeEnabled={customTimeEnabled}
-                  setCustomTimeEnabled={setCustomTimeEnabled}
-                  customTime={customTime}
-                  setCustomTime={setCustomTime}
-                  unitSystem={unitSystem}
-                  setUnitSystem={setUnitSystem}
-                  weightInput={weightInput}
-                  setWeightInput={setWeightInput}
-                  heightInput={heightInput}
-                  setHeightInput={setHeightInput}
-                  breastSide={breastSide}
-                  setBreastSide={setBreastSide}
-                  onPressHeaderAction={() => setShowLogMenu(true)}
-                />
-              )}
-              {tab === 'growth' && (
-                <GrowthScreen
-                  baby={baby}
-                  growth={growth}
-                  unitSystem={unitSystem}
-                  setUnitSystem={setUnitSystem}
-                  onRefreshData={() => void loadData(false)}
-                />
-              )}
-              {tab === 'history' && (
-                <HistoryScreen
-                  events={events}
-                  feedings={feedings}
-                  sleepSessions={sleep}
-                  diapers={diapers}
-                  onRefreshData={loadData}
-                  onBack={() => setTab(previousTab)}
-                />
-              )}
-              {tab === 'insights' && (
-                <InsightsScreen
-                  baby={baby}
-                  insight={insight}
-                  loading={insightLoading}
-                  feedings={feedings}
-                  sleep={sleep}
-                  onGenerate={loadInsights}
-                />
-              )}
-              {tab === 'milestones' && <MilestonesScreen baby={baby} />}
-            </>
+                >
+                  <SectionTitle>Recent Alerts</SectionTitle>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        try {
+                          const data = await api.listRecentNotifications();
+                          setNotifications(data);
+                        } catch {}
+                      }}
+                      style={{
+                        backgroundColor: C.purpleSoft,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 12,
+                      }}
+                    >
+                      <Text style={{ color: C.purpleDark, fontWeight: '700', fontSize: 12 }}>
+                        Refresh
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        try {
+                          await api.clearNotifications();
+                          setNotifications([]);
+                        } catch {}
+                      }}
+                      style={{
+                        backgroundColor: '#FEE2E2',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 12,
+                      }}
+                    >
+                      <Text style={{ color: '#EF4444', fontWeight: '700', fontSize: 12 }}>
+                        Clear
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {!notifications.length ? (
+                  <EmptyState
+                    title="No notifications"
+                    description="All caught up! Active alerts will appear here."
+                  />
+                ) : (
+                  notifications.map((n) => (
+                    <SwipeableNotification
+                      key={n.id}
+                      notification={n}
+                      onDismiss={async () => {
+                        try {
+                          await api.deleteNotification(n.id);
+                        } catch {}
+                        setNotifications((prev) => prev.filter((x) => x.id !== n.id));
+                      }}
+                    />
+                  ))
+                )}
+
+                <TouchableOpacity
+                  onPress={() => setShowNotifications(false)}
+                  style={[styles.logButton, { marginTop: 20, backgroundColor: '#ECECEC' }]}
+                >
+                  <Text style={{ color: C.ink, fontWeight: '700' }}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                {tab === 'home' && (
+                  <HomeScreen
+                    baby={baby}
+                    events={visibleEvents}
+                    feedings={feedings}
+                    diapers={diapers}
+                    filter={filter}
+                    setFilter={setFilter}
+                    onQuickLog={(kind) => {
+                      setActivity(kind);
+                      setTab('log');
+                    }}
+                    activeSleepStart={activeSleepStart}
+                    elapsedSeconds={elapsedSeconds}
+                    formatElapsed={formatElapsed}
+                    notifications={notifications}
+                    onPressNotifications={() => setShowNotifications(true)}
+                  />
+                )}
+                {tab === 'log' && (
+                  <LogScreen
+                    activity={activity}
+                    setActivity={setActivity}
+                    feedType={feedType}
+                    setFeedType={setFeedType}
+                    subtype={subtype}
+                    setSubtype={setSubtype}
+                    amount={amount}
+                    setAmount={setAmount}
+                    duration={duration}
+                    setDuration={setDuration}
+                    notes={notes}
+                    setNotes={setNotes}
+                    saving={saving}
+                    onLog={logActivity}
+                    activeSleepStart={activeSleepStart}
+                    setActiveSleepStart={setActiveSleepStart}
+                    sleepTrackingMode={sleepTrackingMode}
+                    setSleepTrackingMode={setSleepTrackingMode}
+                    elapsedSeconds={elapsedSeconds}
+                    formatElapsed={formatElapsed}
+                    customTimeEnabled={customTimeEnabled}
+                    setCustomTimeEnabled={setCustomTimeEnabled}
+                    customTime={customTime}
+                    setCustomTime={setCustomTime}
+                    unitSystem={unitSystem}
+                    setUnitSystem={setUnitSystem}
+                    weightInput={weightInput}
+                    setWeightInput={setWeightInput}
+                    heightInput={heightInput}
+                    setHeightInput={setHeightInput}
+                    breastSide={breastSide}
+                    setBreastSide={setBreastSide}
+                    onPressHeaderAction={() => setShowLogMenu(true)}
+                  />
+                )}
+                {tab === 'growth' && (
+                  <GrowthScreen
+                    baby={baby}
+                    growth={growth}
+                    unitSystem={unitSystem}
+                    setUnitSystem={setUnitSystem}
+                    onRefreshData={() => void loadData(false)}
+                  />
+                )}
+                {tab === 'history' && (
+                  <HistoryScreen
+                    events={events}
+                    feedings={feedings}
+                    sleepSessions={sleep}
+                    diapers={diapers}
+                    onRefreshData={loadData}
+                    onBack={() => setTab(previousTab)}
+                  />
+                )}
+                {tab === 'insights' && (
+                  <InsightsScreen
+                    baby={baby}
+                    insight={insight}
+                    loading={insightLoading}
+                    feedings={feedings}
+                    sleep={sleep}
+                    onGenerate={loadInsights}
+                  />
+                )}
+                {tab === 'milestones' && <MilestonesScreen baby={baby} />}
+              </>
+            )}
+          </ScrollView>
+          {!showNotifications && (
+            <BottomNav
+              active={tab}
+              onChange={(newTab) => {
+                if (newTab === 'history') setPreviousTab(tab);
+                setTab(newTab);
+              }}
+            />
           )}
-        </ScrollView>
-        {!showNotifications && (
-          <BottomNav
-            active={tab}
-            onChange={(newTab) => {
-              if (newTab === 'history') setPreviousTab(tab);
-              setTab(newTab);
-            }}
-          />
-        )}
-      </View>
+        </View>
+      </KeyboardAvoidingView>
 
       {/* Log Options Menu Modal */}
       <Modal

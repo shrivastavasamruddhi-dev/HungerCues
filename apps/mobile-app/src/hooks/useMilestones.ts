@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { milestoneService } from '../services/milestoneService';
-import type { Baby, Milestone } from '../types';
+import type { Baby, Milestone, MilestoneMedia } from '../types';
 
 export function useMilestones(baby: Baby | null) {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -89,6 +89,63 @@ export function useMilestones(baby: Baby | null) {
     }
   };
 
+  const [uploading, setUploading] = useState<number | null>(null);
+
+  const uploadMedia = async (
+    milestoneId: number,
+    uri: string,
+    mimeType: string,
+    filename: string
+  ) => {
+    setUploading(milestoneId);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        name: filename || 'media-attachment',
+        type: mimeType,
+      } as any);
+
+      const uploaded = await milestoneService.uploadMedia(milestoneId, formData);
+      setMilestones((prev) =>
+        prev.map((m) => {
+          if (m.id === milestoneId) {
+            return {
+              ...m,
+              media: [...(m.media || []), uploaded],
+            };
+          }
+          return m;
+        })
+      );
+    } catch (err) {
+      setError('Failed to upload media. Check file size/type.');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const deleteMedia = async (milestoneId: number, mediaId: number) => {
+    setError(null);
+    try {
+      await milestoneService.deleteMedia(milestoneId, mediaId);
+      setMilestones((prev) =>
+        prev.map((m) => {
+          if (m.id === milestoneId) {
+            return {
+              ...m,
+              media: (m.media || []).filter((item) => item.id !== mediaId),
+            };
+          }
+          return m;
+        })
+      );
+    } catch {
+      setError('Could not delete media.');
+    }
+  };
+
   const deleteMilestone = async (id: number) => {
     try {
       await milestoneService.deleteMilestone(id);
@@ -118,5 +175,8 @@ export function useMilestones(baby: Baby | null) {
     handleSaveCustom,
     deleteMilestone,
     loadMilestones,
+    uploading,
+    uploadMedia,
+    deleteMedia,
   };
 }

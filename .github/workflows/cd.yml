@@ -1,8 +1,13 @@
 name: CD — Deploy to Hetzner
 
 on:
-  push:
+  # Run ONLY when the CI workflow completes successfully on main.
+  # This is the correct cross-workflow gate — `needs:` cannot reference
+  # jobs in a different workflow file.
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
+    types: [completed]
 
 # Only one deployment at a time
 concurrency:
@@ -13,8 +18,11 @@ jobs:
   deploy:
     name: Deploy to Hetzner VPS
     runs-on: ubuntu-latest
-    # Only deploy after CI has passed (ci.yml runs on the same event)
-    needs: []          # Will be updated to `needs: [ci]` once CI is stable
+    # Skip if the triggering CI run did not succeed
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: read
+      packages: write    # Required to push to ghcr.io
 
     steps:
       - name: Checkout code
@@ -48,7 +56,7 @@ jobs:
       # SSH into Hetzner and pull + restart the stack
       # -------------------------------------------------------------------
       - name: Deploy to Hetzner VPS
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}

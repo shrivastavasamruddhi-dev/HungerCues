@@ -3,7 +3,45 @@ packages:
   - "packages/*"
 allowBuilds:
   '@firebase/util': true
+  '@sentry/cli': true
   msgpackr-extract: true
   protobufjs: true
   unrs-resolver: true
 confirmModulesPurge: false
+minimumReleaseAgeExclude:
+  - '@expo/cli@56.1.17'
+  - '@expo/config-plugins@56.0.10'
+  - '@expo/config-types@56.0.7'
+  - '@expo/config@56.0.10'
+  - '@expo/fingerprint@0.19.5'
+  - '@expo/log-box@56.0.14'
+  - '@expo/metro-config@56.0.15'
+  - '@expo/prebuild-config@56.0.17'
+  - '@expo/router-server@56.0.15'
+  - babel-preset-expo@56.0.16
+  - expo-asset@56.0.18
+  - expo-constants@56.0.19
+  - expo-modules-autolinking@56.0.17
+  - expo-modules-core@56.0.18
+  - expo@56.0.13
+  - expo-dev-client@56.0.21
+  - expo-dev-launcher@56.0.21
+  - expo-dev-menu@56.0.18
+  - expo-image-picker@56.0.19
+  - '@expo/cli@56.1.18'
+  - '@expo/config-plugins@56.0.11'
+  - '@expo/config@56.0.11'
+  - '@expo/env@2.3.1'
+  - '@expo/fingerprint@0.19.6'
+  - '@expo/image-utils@0.10.2'
+  - '@expo/inline-modules@0.0.13'
+  - '@expo/local-build-cache-provider@56.0.9'
+  - '@expo/metro-config@56.0.16'
+  - '@expo/prebuild-config@56.0.18'
+  - '@expo/require-utils@56.1.4'
+  - '@expo/schema-utils@56.0.2'
+  - expo-constants@56.0.20
+  - expo-modules-autolinking@56.0.18
+  - expo-modules-core@56.0.19
+  - expo-modules-jsi@56.0.11
+  - expo@56.0.14

@@ -1,5 +1,5 @@
 import { request } from './apiClient';
-import type { Milestone } from '../types';
+import type { Milestone, MilestoneMedia } from '../types';
 
 export const milestoneService = {
   listMilestones: (babyId: number) => request<Milestone[]>(`/milestones/baby/${babyId}`),
@@ -18,4 +18,15 @@ export const milestoneService = {
 
   deleteMilestone: (id: number) =>
     request<{ status: string }>(`/milestones/${id}`, { method: 'DELETE' }),
+
+  uploadMedia: (milestoneId: number, formData: FormData) =>
+    request<MilestoneMedia>(`/milestones/${milestoneId}/media`, {
+      method: 'POST',
+      body: formData,
+    }),
+
+  deleteMedia: (milestoneId: number, mediaId: number) =>
+    request<{ status: string }>(`/milestones/${milestoneId}/media/${mediaId}`, {
+      method: 'DELETE',
+    }),
 };

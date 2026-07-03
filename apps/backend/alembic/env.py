@@ -6,9 +6,13 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.database import Base
+# Import all models to ensure they register on Base.metadata for autogenerate/online migrations
+from app.models import User, Baby, Feeding, SleepSession, DiaperChange, GrowthRecord, DeviceToken, Milestone, MilestoneMedia
+from app.config import settings
 
 # Alembic Config object
 config = context.config
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:

@@ -72,6 +72,13 @@ async def verify_and_setup_db() -> None:
             await temp_engine.dispose()
             logger.info("PostgreSQL connection verified.")
         except Exception as e:
+            if settings.is_production:
+                # In production, SQLite is never acceptable — fail fast so the
+                # container restarter can surface the misconfiguration clearly.
+                raise RuntimeError(
+                    f"FATAL: PostgreSQL is unreachable in production. "
+                    f"Refusing SQLite fallback. Error: {e}"
+                ) from e
             logger.warning(
                 "PostgreSQL unavailable: %s — falling back to SQLite (dev/test only).", e
             )

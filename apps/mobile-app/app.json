@@ -26,10 +26,21 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "your-sentry-org",
+          "project": "hungercues-mobile"
+        }
+      ],
+      "@sentry/react-native"
+    ],
     "extra": {
       "eas": {
         "projectId": "your-eas-project-id"
-      }
+      },
+      "sentryDsn": ""
     }
   }
 }

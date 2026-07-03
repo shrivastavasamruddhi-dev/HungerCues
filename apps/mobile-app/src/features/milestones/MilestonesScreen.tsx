@@ -31,6 +31,9 @@ export function MilestonesScreen({ baby }: Props) {
     handleSaveMilestone,
     handleSaveCustom,
     deleteMilestone,
+    uploading,
+    uploadMedia,
+    deleteMedia,
   } = useMilestones(baby);
 
   const defaultCDC = [
@@ -63,6 +66,9 @@ export function MilestonesScreen({ baby }: Props) {
         handleToggleCDC={handleToggleCDC}
         handleSaveMilestone={handleSaveMilestone}
         setActiveMilestoneName={setActiveMilestoneName}
+        uploading={uploading}
+        uploadMedia={uploadMedia}
+        deleteMedia={deleteMedia}
       />
 
       <View style={{ height: 20 }} />
@@ -78,6 +84,9 @@ export function MilestonesScreen({ baby }: Props) {
         setCustomNotes={setCustomNotes}
         handleSaveCustom={handleSaveCustom}
         deleteMilestone={deleteMilestone}
+        uploading={uploading}
+        uploadMedia={uploadMedia}
+        deleteMedia={deleteMedia}
       />
     </View>
   );

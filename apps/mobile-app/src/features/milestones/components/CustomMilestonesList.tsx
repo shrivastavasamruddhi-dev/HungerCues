@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import { C } from '../../../constants/colors';
 import { SectionTitle } from '../../../components/SectionTitle';
 import type { Milestone } from '../../../types';
+import { MilestoneMediaManager } from './MilestoneMediaManager';
 
 interface Props {
   milestones: Milestone[];
@@ -15,6 +16,9 @@ interface Props {
   setCustomNotes: (val: string) => void;
   handleSaveCustom: () => void;
   deleteMilestone: (id: number) => void;
+  uploading: number | null;
+  uploadMedia: (milestoneId: number, uri: string, mimeType: string, filename: string) => Promise<void>;
+  deleteMedia: (milestoneId: number, mediaId: number) => Promise<void>;
 }
 
 export function CustomMilestonesList({
@@ -28,6 +32,9 @@ export function CustomMilestonesList({
   setCustomNotes,
   handleSaveCustom,
   deleteMilestone,
+  uploading,
+  uploadMedia,
+  deleteMedia,
 }: Props) {
   const customMilestones = milestones.filter(
     (m) => !defaultCDC.some((d) => d.name.toLowerCase() === m.name.toLowerCase()),
@@ -102,8 +109,15 @@ export function CustomMilestonesList({
               {m.notes && (
                 <Text style={{ fontSize: 12, color: '#555', marginTop: 4 }}>{m.notes}</Text>
               )}
+              <MilestoneMediaManager
+                milestoneId={m.id}
+                media={m.media || []}
+                uploading={uploading === m.id}
+                onUpload={uploadMedia}
+                onDelete={deleteMedia}
+              />
             </View>
-            <TouchableOpacity onPress={() => deleteMilestone(m.id)} style={{ padding: 6 }}>
+            <TouchableOpacity onPress={() => deleteMilestone(m.id)} style={{ padding: 6, alignSelf: 'flex-start' }}>
               <Text style={{ color: '#E53E3E', fontSize: 16 }}>🗑</Text>
             </TouchableOpacity>
           </View>

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -10,9 +9,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import verify_and_setup_db
-import app.database as _db
 from app.dependencies.auth import initialize_firebase_app
-from app.jobs.notification_scheduler import notification_scheduler_loop
 from app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from app.middleware.security import RequestIDMiddleware, SecurityHeadersMiddleware
 from app.routers.v1 import router as v1_router
@@ -41,15 +38,15 @@ if settings.sentry_dsn:
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Initialise Firebase, verify/setup DB, then start background jobs."""
+    """
+    Initialise Firebase and verify DB connectivity on startup.
+
+    Note: Push notification scheduling is handled by Celery Beat
+    (celery-beat service in docker-compose.prod.yml). The old asyncio
+    background task has been removed to prevent double-scheduling.
+    """
     initialize_firebase_app()
     await verify_and_setup_db()
-
-    class _SessionProxy:
-        def __call__(self):
-            return _db.async_session()
-
-    asyncio.create_task(notification_scheduler_loop(_SessionProxy()))
     yield
 
 

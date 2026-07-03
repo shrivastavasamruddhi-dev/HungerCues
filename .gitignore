@@ -40,3 +40,15 @@ original.tsx
 *.log
 *.backup
 *.tmp
+.coverage
+*test_baby_tracker.db
+test_baby_tracker.db
+
+# Android build outputs
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+*.apk
+*.aab
+

@@ -28,26 +28,11 @@ def check_and_send_notifications(self):
     """
     try:
         from app.database import async_session
-        from app.jobs.notification_scheduler import notification_scheduler_loop
+        from app.jobs.notification_scheduler import check_and_send
 
         async def _run():
-            """Run one tick of the notification scheduler."""
-            class _SessionProxy:
-                def __call__(self):
-                    return async_session()
-
-            # Run a single iteration of the scheduler
-            try:
-                async with async_session() as session:
-                    # Import the per-tick logic if available, else run loop once
-                    from app.jobs.notification_scheduler import check_and_send
-                    await check_and_send(session)
-            except ImportError:
-                # Fallback: the scheduler loop manages its own session
-                logger.warning(
-                    "check_and_send not found in notification_scheduler; "
-                    "consider refactoring to expose a single-tick function."
-                )
+            async with async_session() as session:
+                await check_and_send(session)
 
         asyncio.run(_run())
 

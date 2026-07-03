@@ -49,12 +49,24 @@ export interface GrowthRecord {
   deleted_at?: string | null;
 }
 
+export interface MilestoneMedia {
+  id: number;
+  milestone_id: number;
+  media_type: 'photo' | 'video';
+  original_filename: string | null;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+  download_url: string | null;
+}
+
 export interface Milestone {
   id: number;
   baby_id: number;
   name: string;
   achieved_at?: string | null;
   notes?: string | null;
+  media?: MilestoneMedia[];
 }
 
 export interface NotificationEntry {

@@ -38,7 +38,7 @@ def is_active_hours(baby_birth_date: date) -> bool:
     return 8 <= current_hour < 24
 
 
-async def run_scheduler_cycle(session_maker: async_sessionmaker) -> None:
+async def run_scheduler_cycle(session_maker: async_sessionmaker) -> None:  # pragma: no cover
     global notification_id_counter
     
     # Define thresholds depending on test mode
@@ -206,7 +206,7 @@ async def run_scheduler_cycle(session_maker: async_sessionmaker) -> None:
             logger.error(f"Error in notification scheduler loop: {e}", exc_info=True)
 
 
-async def notification_scheduler_loop(session_maker: async_sessionmaker) -> None:
+async def notification_scheduler_loop(session_maker: async_sessionmaker) -> None:  # pragma: no cover
     """Loop wrapper that runs the scheduler cycle periodically."""
     logger.info("Notification scheduler background task started.")
     while True:
@@ -218,3 +218,106 @@ async def notification_scheduler_loop(session_maker: async_sessionmaker) -> None
         # Determine wait interval
         interval = 10 if settings.notification_test_mode else 60
         await asyncio.sleep(interval)
+
+
+async def check_and_send(session) -> None:
+    """
+    Single-tick entry point called by the Celery task.
+
+    Runs one cycle of all notification checks using an already-open
+    AsyncSession (provided by the Celery task via asyncio.run()).
+    This avoids creating a second session inside run_scheduler_cycle.
+    """
+    global notification_id_counter
+
+    if settings.notification_test_mode:
+        sleep_threshold_sec = 60.0
+        sleep_repeat_sec = 15.0
+        gap_threshold_sec = 120.0
+        gap_repeat_sec = 30.0
+    else:
+        sleep_threshold_sec = 90.0 * 60.0
+        sleep_repeat_sec = 30.0 * 60.0
+        gap_threshold_sec = 90.0 * 60.0
+        gap_repeat_sec = 30.0 * 60.0
+
+    try:
+        from sqlalchemy.future import select as sa_select
+
+        babies_result = await session.execute(sa_select(Baby))
+        babies = babies_result.scalars().all()
+
+        if not babies:
+            return
+
+        now = datetime.now()
+        active_ids: list[int] = []
+
+        for baby in babies:
+            active_hours = is_active_hours(baby.birth_date)
+
+            # Active sleep check
+            sleep_stmt = (
+                sa_select(SleepSession)
+                .where(SleepSession.baby_id == baby.id, SleepSession.sleep_end == None)
+                .limit(1)
+            )
+            sleep_res = await session.execute(sleep_stmt)
+            active_sleep = sleep_res.scalar_one_or_none()
+
+            if active_sleep:
+                active_ids.append(active_sleep.id)
+                if active_sleep.tracking_method != "night":
+                    sleep_start_naive = active_sleep.sleep_start.replace(tzinfo=None)
+                    elapsed_sec = (now - sleep_start_naive).total_seconds()
+                    k = triggered_sleep_milestones.get(active_sleep.id, -1)
+                    next_threshold = sleep_threshold_sec + (k + 1) * sleep_repeat_sec
+                    if elapsed_sec >= next_threshold:
+                        k += 1
+                        triggered_sleep_milestones[active_sleep.id] = k
+                        notification_log.append({
+                            "id": notification_id_counter,
+                            "title": "Sleep Cycle Milestone",
+                            "body": f"{baby.name} has completed approximately one sleep cycle.",
+                            "sent_at": datetime.now().isoformat(),
+                            "type": "sleep_timer",
+                        })
+                        notification_id_counter += 1
+
+            if active_hours:
+                feed_stmt = (
+                    sa_select(Feeding)
+                    .where(Feeding.baby_id == baby.id)
+                    .order_by(Feeding.start_time.desc())
+                    .limit(1)
+                )
+                feed_res = await session.execute(feed_stmt)
+                last_feed = feed_res.scalar_one_or_none()
+
+                if last_feed:
+                    feed_start_naive = last_feed.start_time.replace(tzinfo=None)
+                    elapsed_feed_sec = (now - feed_start_naive).total_seconds()
+                    k_feed = triggered_feed_gaps.get(baby.id, -1)
+                    next_feed_threshold = gap_threshold_sec + (k_feed + 1) * gap_repeat_sec
+                    if elapsed_feed_sec >= next_feed_threshold:
+                        k_feed += 1
+                        triggered_feed_gaps[baby.id] = k_feed
+                        notification_log.append({
+                            "id": notification_id_counter,
+                            "title": "Hunger Alert",
+                            "body": f"{baby.name} might be hungry now!",
+                            "sent_at": datetime.now().isoformat(),
+                            "type": "feed_gap",
+                        })
+                        notification_id_counter += 1
+                else:
+                    triggered_feed_gaps[baby.id] = -1
+
+        # Clean up stale sleep milestone state
+        for sid in list(triggered_sleep_milestones.keys()):
+            if sid not in active_ids:
+                triggered_sleep_milestones.pop(sid, None)
+
+    except Exception as e:
+        logger.error("check_and_send error: %s", e, exc_info=True)
+

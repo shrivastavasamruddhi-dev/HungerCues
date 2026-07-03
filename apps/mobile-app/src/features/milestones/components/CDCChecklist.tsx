@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import { C } from '../../../constants/colors';
 import { SectionTitle } from '../../../components/SectionTitle';
 import type { Milestone } from '../../../types';
+import { MilestoneMediaManager } from './MilestoneMediaManager';
 
 interface Props {
   milestones: Milestone[];
@@ -13,6 +14,9 @@ interface Props {
   handleToggleCDC: (name: string) => void;
   handleSaveMilestone: () => void;
   setActiveMilestoneName: (val: string | null) => void;
+  uploading: number | null;
+  uploadMedia: (milestoneId: number, uri: string, mimeType: string, filename: string) => Promise<void>;
+  deleteMedia: (milestoneId: number, mediaId: number) => Promise<void>;
 }
 
 export function CDCChecklist({
@@ -24,6 +28,9 @@ export function CDCChecklist({
   handleToggleCDC,
   handleSaveMilestone,
   setActiveMilestoneName,
+  uploading,
+  uploadMedia,
+  deleteMedia,
 }: Props) {
   return (
     <View>
@@ -40,6 +47,15 @@ export function CDCChecklist({
                 </Text>
                 {matched?.notes && (
                   <Text style={styles.checklistMatchedNotes}>Note: {matched.notes}</Text>
+                )}
+                {matched && (
+                  <MilestoneMediaManager
+                    milestoneId={matched.id}
+                    media={matched.media || []}
+                    uploading={uploading === matched.id}
+                    onUpload={uploadMedia}
+                    onDelete={deleteMedia}
+                  />
                 )}
               </View>
               <TouchableOpacity

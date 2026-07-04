@@ -32,13 +32,13 @@ jobs:
           version: "latest"
 
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: uv sync --all-extras --dev
       
       - name: Lint with Ruff
-        run: uv run ruff check .
+        run: uvx ruff check .
 
       - name: Check formatting with Ruff
-        run: uv run ruff format --check .
+        run: uvx ruff format --check .
 
       - name: Security audit (pip-audit)
         run: uv run pip-audit --strict

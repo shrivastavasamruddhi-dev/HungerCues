@@ -26,9 +26,7 @@ class GeminiClient:
         retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError)),
         reraise=True,
     )
-    async def generate_content(
-        self, prompt: str, system_instruction: str | None = None
-    ) -> str:
+    async def generate_content(self, prompt: str, system_instruction: str | None = None) -> str:
         """Call Gemini API to generate content with retries."""
         if not self.api_key:
             logger.warning("GEMINI_API_KEY is not configured. Returning mock response.")

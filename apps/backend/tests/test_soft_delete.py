@@ -78,9 +78,7 @@ async def test_soft_delete_flow(db_session, async_client):
     assert len(del_data["sleep"]) == 0
 
     # 8. Restore feeding
-    restore_res = await async_client.post(
-        f"/api/v1/activities/restore/feed/{feeding_id}"
-    )
+    restore_res = await async_client.post(f"/api/v1/activities/restore/feed/{feeding_id}")
     assert restore_res.status_code == 200
     assert restore_res.json()["status"] == "success"
 
@@ -95,9 +93,7 @@ async def test_soft_delete_flow(db_session, async_client):
     err_res = await async_client.delete("/api/v1/feedings/99999")
     assert err_res.status_code == 404
 
-    err_res2 = await async_client.post(
-        f"/api/v1/activities/restore/invalid_kind/{feeding_id}"
-    )
+    err_res2 = await async_client.post(f"/api/v1/activities/restore/invalid_kind/{feeding_id}")
     assert err_res2.status_code == 400
 
     err_res3 = await async_client.post("/api/v1/activities/restore/feed/99999")

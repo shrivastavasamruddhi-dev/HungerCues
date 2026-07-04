@@ -38,9 +38,7 @@ async def list_deleted_activities(
 
     # 1. Feedings
     feeding_stmt = (
-        select(Feeding)
-        .where(Feeding.baby_id == baby_id, Feeding.deleted_at >= cutoff)
-        .order_by(Feeding.deleted_at.desc())
+        select(Feeding).where(Feeding.baby_id == baby_id, Feeding.deleted_at >= cutoff).order_by(Feeding.deleted_at.desc())
     )
     feeding_res = await db.execute(feeding_stmt)
     feedings = feeding_res.scalars().all()

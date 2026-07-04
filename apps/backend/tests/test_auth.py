@@ -43,9 +43,7 @@ class FirebaseInitializationTests(unittest.TestCase):
 
         with (
             patch.object(settings, "firebase_service_account_key_path", "missing.json"),
-            self.assertRaisesRegex(
-                RuntimeError, "Firebase service account file not found"
-            ),
+            self.assertRaisesRegex(RuntimeError, "Firebase service account file not found"),
         ):
             initialize_firebase_app()
 

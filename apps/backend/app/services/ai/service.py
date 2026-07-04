@@ -18,9 +18,7 @@ class AIService:
     def __init__(self):
         self.client = GeminiClient()
 
-    async def get_parenting_insights(
-        self, request: AIInsightRequest
-    ) -> AIInsightResponse:
+    async def get_parenting_insights(self, request: AIInsightRequest) -> AIInsightResponse:
         """Construct prompt, call Gemini, and parse response into AIInsightResponse."""
         system_instruction = (
             "You are a helpful, professional, and empathetic pediatric nurse and parenting assistant. "
@@ -55,9 +53,7 @@ class AIService:
         )
 
         try:
-            raw_response = await self.client.generate_content(
-                prompt, system_instruction
-            )
+            raw_response = await self.client.generate_content(prompt, system_instruction)
 
             # Clean up potential markdown fences if present
             cleaned_response = raw_response.strip()
@@ -73,9 +69,7 @@ class AIService:
             data = json.loads(cleaned_response)
             return AIInsightResponse(**data)
         except Exception as e:
-            logger.error(
-                f"Error parsing Gemini response or getting insights: {e}", exc_info=True
-            )
+            logger.error(f"Error parsing Gemini response or getting insights: {e}", exc_info=True)
             # Return a graceful fallback if anything fails
             return AIInsightResponse(
                 summary=f"We processed the logs for {request.baby_name}. They are doing great! Let's continue tracking to find deeper patterns.",
@@ -120,9 +114,7 @@ class AIService:
         )
 
         try:
-            raw_response = await self.client.generate_content(
-                prompt, system_instruction
-            )
+            raw_response = await self.client.generate_content(prompt, system_instruction)
             cleaned_response = raw_response.strip()
             if cleaned_response.startswith("```"):
                 lines = cleaned_response.splitlines()
@@ -138,9 +130,7 @@ class AIService:
             logger.error(f"Error answering question: {e}", exc_info=True)
             return "I'm sorry, I encountered an error while processing your question. Please try again."
 
-    async def get_weekly_summary(
-        self, request: AIWeeklySummaryRequest
-    ) -> AIWeeklySummaryResponse:
+    async def get_weekly_summary(self, request: AIWeeklySummaryRequest) -> AIWeeklySummaryResponse:
         """Generate a comprehensive 7-day summary of all baby logs using Gemini."""
         system_instruction = (
             "You are a helpful, professional, and empathetic pediatric nurse and parenting assistant. "
@@ -162,9 +152,7 @@ class AIService:
 
         diaper_text = ""
         for i, d in enumerate(request.diapers):
-            diaper_text += (
-                f"- #{i + 1}: Type={d.type}, Time={d.changed_at.strftime('%a %H:%M')}\n"
-            )
+            diaper_text += f"- #{i + 1}: Type={d.type}, Time={d.changed_at.strftime('%a %H:%M')}\n"
 
         growth_text = ""
         for i, g in enumerate(request.growth_records):
@@ -193,9 +181,7 @@ class AIService:
         )
 
         try:
-            raw_response = await self.client.generate_content(
-                prompt, system_instruction
-            )
+            raw_response = await self.client.generate_content(prompt, system_instruction)
             cleaned_response = raw_response.strip()
             if cleaned_response.startswith("```"):
                 lines = cleaned_response.splitlines()

@@ -83,9 +83,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 # 3. CORS — allow only explicitly configured origins in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=(
-        ["*"] if not settings.is_production else settings.parsed_allowed_origins
-    ),
+    allow_origins=(["*"] if not settings.is_production else settings.parsed_allowed_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -44,9 +44,7 @@ router = APIRouter()
 # Constants
 # ---------------------------------------------------------------------------
 
-PHOTO_MIME_TYPES: frozenset[str] = frozenset(
-    {"image/jpeg", "image/png", "image/webp", "image/heic"}
-)
+PHOTO_MIME_TYPES: frozenset[str] = frozenset({"image/jpeg", "image/png", "image/webp", "image/heic"})
 VIDEO_MIME_TYPES: frozenset[str] = frozenset({"video/mp4", "video/quicktime"})
 ALLOWED_MIME_TYPES: frozenset[str] = PHOTO_MIME_TYPES | VIDEO_MIME_TYPES
 
@@ -114,9 +112,7 @@ async def _get_owned_baby(
     result = await db.execute(select(Baby).where(Baby.id == baby_id))
     baby = result.scalar_one_or_none()
     if baby is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Baby not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Baby not found")
     if baby.family_id != firebase_uid:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -139,9 +135,7 @@ async def _get_owned_milestone(
     result = await db.execute(q)
     milestone = result.scalar_one_or_none()
     if milestone is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Milestone not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Milestone not found")
     # Verify ownership via the parent baby
     await _get_owned_baby(milestone.baby_id, firebase_uid, db)
     return milestone
@@ -160,10 +154,7 @@ def _validate_upload(file: UploadFile, data: bytes) -> None:
             status_code=422,
             detail={
                 "code": "unsupported_mime_type",
-                "message": (
-                    f"Unsupported file type '{content_type}'. "
-                    f"Allowed: {sorted(ALLOWED_MIME_TYPES)}"
-                ),
+                "message": (f"Unsupported file type '{content_type}'. Allowed: {sorted(ALLOWED_MIME_TYPES)}"),
             },
         )
 
@@ -180,17 +171,12 @@ def _validate_upload(file: UploadFile, data: bytes) -> None:
             status_code=413,
             detail={
                 "code": "file_too_large",
-                "message": (
-                    f"File size {len(data):,} bytes exceeds the "
-                    f"{label} limit for this media type"
-                ),
+                "message": (f"File size {len(data):,} bytes exceeds the {label} limit for this media type"),
             },
         )
 
 
-async def _milestone_with_urls(
-    milestone: Milestone, db: AsyncSession
-) -> MilestoneSchema:
+async def _milestone_with_urls(milestone: Milestone, db: AsyncSession) -> MilestoneSchema:
     """Build a MilestoneSchema, generating presigned URLs for each media item."""
     storage = get_storage_service()
     media_out: list[MilestoneMediaSchema] = []
@@ -199,9 +185,7 @@ async def _milestone_with_urls(
         try:
             url = await storage.create_presigned_download_url(m.storage_key)
         except StorageError:
-            logger.warning(
-                "Could not generate presigned URL for storage_key=%s", m.storage_key
-            )
+            logger.warning("Could not generate presigned URL for storage_key=%s", m.storage_key)
         media_out.append(
             MilestoneMediaSchema(
                 id=m.id,
@@ -210,11 +194,7 @@ async def _milestone_with_urls(
                 original_filename=m.original_filename,
                 content_type=m.content_type,
                 size_bytes=m.size_bytes,
-                created_at=(
-                    m.created_at
-                    if m.created_at.tzinfo
-                    else m.created_at.replace(tzinfo=UTC)
-                ),
+                created_at=(m.created_at if m.created_at.tzinfo else m.created_at.replace(tzinfo=UTC)),
                 download_url=url,
             )
         )
@@ -252,9 +232,7 @@ async def create_milestone(
     await db.commit()
 
     # Re-fetch with media relationship loaded (empty list at creation)
-    milestone = await _get_owned_milestone(
-        milestone.id, firebase_uid, db, load_media=True
-    )
+    milestone = await _get_owned_milestone(milestone.id, firebase_uid, db, load_media=True)
     return await _milestone_with_urls(milestone, db)
 
 
@@ -268,10 +246,7 @@ async def list_milestones(
     await _get_owned_baby(baby_id, firebase_uid, db)
 
     result = await db.execute(
-        select(Milestone)
-        .where(Milestone.baby_id == baby_id)
-        .options(selectinload(Milestone.media))
-        .order_by(Milestone.id.asc())
+        select(Milestone).where(Milestone.baby_id == baby_id).options(selectinload(Milestone.media)).order_by(Milestone.id.asc())
     )
     milestones = result.scalars().all()
     return [await _milestone_with_urls(m, db) for m in milestones]
@@ -284,9 +259,7 @@ async def get_milestone(
     firebase_uid: str = Depends(get_current_firebase_uid),
 ):
     """Retrieve a single milestone with its media metadata."""
-    milestone = await _get_owned_milestone(
-        milestone_id, firebase_uid, db, load_media=True
-    )
+    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
     return await _milestone_with_urls(milestone, db)
 
 
@@ -298,9 +271,7 @@ async def update_milestone(
     firebase_uid: str = Depends(get_current_firebase_uid),
 ):
     """Partially update a milestone.  Caller must own the baby."""
-    milestone = await _get_owned_milestone(
-        milestone_id, firebase_uid, db, load_media=True
-    )
+    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
 
     if milestone_in.name is not None:
         milestone.name = milestone_in.name
@@ -313,9 +284,7 @@ async def update_milestone(
     await db.refresh(milestone)
 
     # Reload with media
-    milestone = await _get_owned_milestone(
-        milestone_id, firebase_uid, db, load_media=True
-    )
+    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
     return await _milestone_with_urls(milestone, db)
 
 
@@ -333,9 +302,7 @@ async def delete_milestone(
     but don't want to leave orphaned DB rows because R2 is idempotent on
     missing keys — operator can retry the R2 cleanup manually).
     """
-    milestone = await _get_owned_milestone(
-        milestone_id, firebase_uid, db, load_media=True
-    )
+    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
 
     storage = get_storage_service()
     for media in list(milestone.media):
@@ -343,8 +310,7 @@ async def delete_milestone(
             await storage.delete_object(media.storage_key)
         except StorageError:
             logger.error(
-                "Failed to delete R2 object %s for media_id=%s; "
-                "continuing with DB deletion",
+                "Failed to delete R2 object %s for media_id=%s; continuing with DB deletion",
                 media.storage_key,
                 media.id,
             )
@@ -377,9 +343,7 @@ async def upload_media(
     - Uses a UUID as the R2 object key (never the original filename).
     - Creates the DB record only after a successful upload.
     """
-    milestone = await _get_owned_milestone(
-        milestone_id, firebase_uid, db, load_media=True
-    )
+    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
 
     # Check attachment cap
     if len(milestone.media) >= MAX_MEDIA_PER_MILESTONE:
@@ -387,10 +351,7 @@ async def upload_media(
             status_code=422,
             detail={
                 "code": "max_attachments_exceeded",
-                "message": (
-                    f"Milestone already has {MAX_MEDIA_PER_MILESTONE} attachments "
-                    f"(the maximum allowed)"
-                ),
+                "message": (f"Milestone already has {MAX_MEDIA_PER_MILESTONE} attachments (the maximum allowed)"),
             },
         )
 
@@ -428,9 +389,7 @@ async def upload_media(
         try:
             await storage.delete_object(storage_key)
         except StorageError:
-            logger.error(
-                "Could not clean up orphaned R2 object %s after DB failure", storage_key
-            )
+            logger.error("Could not clean up orphaned R2 object %s after DB failure", storage_key)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -505,8 +464,7 @@ async def delete_media(
         await storage.delete_object(media.storage_key)
     except StorageError:
         logger.error(
-            "Failed to delete R2 object %s for media_id=%s; "
-            "proceeding with DB deletion anyway",
+            "Failed to delete R2 object %s for media_id=%s; proceeding with DB deletion anyway",
             media.storage_key,
             media_id,
         )

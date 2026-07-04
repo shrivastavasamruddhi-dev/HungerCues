@@ -79,13 +79,7 @@ async def run_scheduler_cycle(
                 # A. Live Sleep Timer Milestones
                 # ==========================================
                 # Find active sleep session (sleep_end is null)
-                sleep_stmt = (
-                    select(SleepSession)
-                    .where(
-                        SleepSession.baby_id == baby.id, SleepSession.sleep_end == None
-                    )
-                    .limit(1)
-                )
+                sleep_stmt = select(SleepSession).where(SleepSession.baby_id == baby.id, SleepSession.sleep_end == None).limit(1)
                 sleep_res = await db.execute(sleep_stmt)
                 active_sleep = sleep_res.scalar_one_or_none()
 
@@ -95,26 +89,18 @@ async def run_scheduler_cycle(
                     if active_sleep.tracking_method != "night":
                         # Calculate elapsed time in seconds
                         # Handle offset-naive comparison
-                        sleep_start_naive = active_sleep.sleep_start.replace(
-                            tzinfo=None
-                        )
+                        sleep_start_naive = active_sleep.sleep_start.replace(tzinfo=None)
                         elapsed_sec = (now - sleep_start_naive).total_seconds()
 
                         k = triggered_sleep_milestones.get(active_sleep.id, -1)
-                        next_threshold = (
-                            sleep_threshold_sec + (k + 1) * sleep_repeat_sec
-                        )
+                        next_threshold = sleep_threshold_sec + (k + 1) * sleep_repeat_sec
 
                         if elapsed_sec >= next_threshold:
                             k += 1
                             triggered_sleep_milestones[active_sleep.id] = k
 
-                            msg = (
-                                "Your baby has completed approximately one sleep cycle."
-                            )
-                            logger.info(
-                                f"[Sleep Cycle Alert] Baby {baby.name} (ID: {baby.id}): {msg}"
-                            )
+                            msg = "Your baby has completed approximately one sleep cycle."
+                            logger.info(f"[Sleep Cycle Alert] Baby {baby.name} (ID: {baby.id}): {msg}")
 
                             # Add to in-memory notification log
                             notification_entry = {
@@ -132,12 +118,7 @@ async def run_scheduler_cycle(
                 # ==========================================
                 if active_hours:
                     # 1. Feeding Gap Alert
-                    feed_stmt = (
-                        select(Feeding)
-                        .where(Feeding.baby_id == baby.id)
-                        .order_by(Feeding.start_time.desc())
-                        .limit(1)
-                    )
+                    feed_stmt = select(Feeding).where(Feeding.baby_id == baby.id).order_by(Feeding.start_time.desc()).limit(1)
                     feed_res = await db.execute(feed_stmt)
                     last_feed = feed_res.scalar_one_or_none()
 
@@ -146,18 +127,14 @@ async def run_scheduler_cycle(
                         elapsed_feed_sec = (now - feed_start_naive).total_seconds()
 
                         k_feed = triggered_feed_gaps.get(baby.id, -1)
-                        next_feed_threshold = (
-                            gap_threshold_sec + (k_feed + 1) * gap_repeat_sec
-                        )
+                        next_feed_threshold = gap_threshold_sec + (k_feed + 1) * gap_repeat_sec
 
                         if elapsed_feed_sec >= next_feed_threshold:
                             k_feed += 1
                             triggered_feed_gaps[baby.id] = k_feed
 
                             msg = "Your baby might be hungry now!"
-                            logger.info(
-                                f"[Feeding Gap Alert] Baby {baby.name} (ID: {baby.id}): {msg}"
-                            )
+                            logger.info(f"[Feeding Gap Alert] Baby {baby.name} (ID: {baby.id}): {msg}")
 
                             notification_entry = {
                                 "id": notification_id_counter,
@@ -192,18 +169,14 @@ async def run_scheduler_cycle(
                         elapsed_nap_sec = (now - nap_end_naive).total_seconds()
 
                         k_nap = triggered_nap_gaps.get(baby.id, -1)
-                        next_nap_threshold = (
-                            gap_threshold_sec + (k_nap + 1) * gap_repeat_sec
-                        )
+                        next_nap_threshold = gap_threshold_sec + (k_nap + 1) * gap_repeat_sec
 
                         if elapsed_nap_sec >= next_nap_threshold:
                             k_nap += 1
                             triggered_nap_gaps[baby.id] = k_nap
 
                             msg = "It's time for your baby to sleep!"
-                            logger.info(
-                                f"[Nap Gap Alert] Baby {baby.name} (ID: {baby.id}): {msg}"
-                            )
+                            logger.info(f"[Nap Gap Alert] Baby {baby.name} (ID: {baby.id}): {msg}")
 
                             notification_entry = {
                                 "id": notification_id_counter,
@@ -280,11 +253,7 @@ async def check_and_send(session) -> None:
             active_hours = is_active_hours(baby.birth_date)
 
             # Active sleep check
-            sleep_stmt = (
-                sa_select(SleepSession)
-                .where(SleepSession.baby_id == baby.id, SleepSession.sleep_end == None)
-                .limit(1)
-            )
+            sleep_stmt = sa_select(SleepSession).where(SleepSession.baby_id == baby.id, SleepSession.sleep_end == None).limit(1)
             sleep_res = await session.execute(sleep_stmt)
             active_sleep = sleep_res.scalar_one_or_none()
 
@@ -310,12 +279,7 @@ async def check_and_send(session) -> None:
                         notification_id_counter += 1
 
             if active_hours:
-                feed_stmt = (
-                    sa_select(Feeding)
-                    .where(Feeding.baby_id == baby.id)
-                    .order_by(Feeding.start_time.desc())
-                    .limit(1)
-                )
+                feed_stmt = sa_select(Feeding).where(Feeding.baby_id == baby.id).order_by(Feeding.start_time.desc()).limit(1)
                 feed_res = await session.execute(feed_stmt)
                 last_feed = feed_res.scalar_one_or_none()
 
@@ -323,9 +287,7 @@ async def check_and_send(session) -> None:
                     feed_start_naive = last_feed.start_time.replace(tzinfo=None)
                     elapsed_feed_sec = (now - feed_start_naive).total_seconds()
                     k_feed = triggered_feed_gaps.get(baby.id, -1)
-                    next_feed_threshold = (
-                        gap_threshold_sec + (k_feed + 1) * gap_repeat_sec
-                    )
+                    next_feed_threshold = gap_threshold_sec + (k_feed + 1) * gap_repeat_sec
                     if elapsed_feed_sec >= next_feed_threshold:
                         k_feed += 1
                         triggered_feed_gaps[baby.id] = k_feed

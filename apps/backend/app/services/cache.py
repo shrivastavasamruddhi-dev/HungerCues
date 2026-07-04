@@ -40,9 +40,7 @@ class CacheService:
             logger.info("Connected to Redis cache backend.")
             return self.redis
         except Exception as e:
-            logger.warning(
-                "Redis cache connection failed (falling back to no-cache): %s", e
-            )
+            logger.warning("Redis cache connection failed (falling back to no-cache): %s", e)
             self._disabled = True  # Avoid continuous reconnect attempts on failure
             self.redis = None
             return None

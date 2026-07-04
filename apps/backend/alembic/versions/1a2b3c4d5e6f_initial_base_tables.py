@@ -30,9 +30,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_users_id"), "users", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_users_firebase_uid"), "users", ["firebase_uid"], unique=True
-    )
+    op.create_index(op.f("ix_users_firebase_uid"), "users", ["firebase_uid"], unique=True)
 
     # 2. babies
     op.create_table(
@@ -78,9 +76,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["baby_id"], ["babies.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_sleep_sessions_id"), "sleep_sessions", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_sleep_sessions_id"), "sleep_sessions", ["id"], unique=False)
 
     # 5. diaper_changes
     op.create_table(
@@ -94,9 +90,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["baby_id"], ["babies.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_diaper_changes_id"), "diaper_changes", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_diaper_changes_id"), "diaper_changes", ["id"], unique=False)
 
     # 6. growth_records
     op.create_table(
@@ -111,9 +105,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["baby_id"], ["babies.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_growth_records_id"), "growth_records", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_growth_records_id"), "growth_records", ["id"], unique=False)
 
     # 7. device_tokens
     op.create_table(
@@ -142,9 +134,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        op.f("ix_device_tokens_user_firebase_uid"), table_name="device_tokens"
-    )
+    op.drop_index(op.f("ix_device_tokens_user_firebase_uid"), table_name="device_tokens")
     op.drop_index(op.f("ix_device_tokens_id"), table_name="device_tokens")
     op.drop_table("device_tokens")
     op.drop_index(op.f("ix_growth_records_id"), table_name="growth_records")

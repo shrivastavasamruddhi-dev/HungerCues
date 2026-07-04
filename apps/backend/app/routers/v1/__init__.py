@@ -34,7 +34,5 @@ router.include_router(ai_router, prefix="/ai", tags=["ai"])
 router.include_router(diapers_router, prefix="/diapers", tags=["diapers"])
 router.include_router(growth_router, prefix="/growth", tags=["growth"])
 router.include_router(milestones_router, prefix="/milestones", tags=["milestones"])
-router.include_router(
-    notifications_router, prefix="/notifications", tags=["notifications"]
-)
+router.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
 router.include_router(activities_router, prefix="/activities", tags=["activities"])

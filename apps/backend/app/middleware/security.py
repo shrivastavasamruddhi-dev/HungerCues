@@ -29,9 +29,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Enforce HTTPS for 1 year (only meaningful in production behind HTTPS)
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
-        )
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
         # Prevent MIME-type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -43,14 +41,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
         # Content Security Policy — API only returns JSON, so restrict everything
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; frame-ancestors 'none';"
-        )
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none';"
 
         # Disable unused browser features
-        response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=(), payment=()"
-        )
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
 
         return response
 

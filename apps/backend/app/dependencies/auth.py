@@ -34,42 +34,27 @@ def initialize_firebase_app() -> firebase_admin.App | None:
     except ValueError:
         pass
 
-    is_project_id_placeholder = (
-        not settings.firebase_project_id
-        or settings.firebase_project_id == "your-firebase-project-id"
-    )
+    is_project_id_placeholder = not settings.firebase_project_id or settings.firebase_project_id == "your-firebase-project-id"
     if is_project_id_placeholder and not settings.firebase_service_account_key_path:
-        logger.warning(
-            "Firebase credentials not configured. Firebase admin SDK will not be initialized."
-        )
+        logger.warning("Firebase credentials not configured. Firebase admin SDK will not be initialized.")
         return None
 
-    options = (
-        {"projectId": settings.firebase_project_id}
-        if settings.firebase_project_id
-        else None
-    )
+    options = {"projectId": settings.firebase_project_id} if settings.firebase_project_id else None
     key_path = settings.firebase_service_account_key_path
 
     if not key_path:
         try:
             return firebase_admin.initialize_app(options=options)
         except Exception as exc:
-            logger.warning(
-                f"Could not initialize Firebase App with default credentials: {exc}"
-            )
+            logger.warning(f"Could not initialize Firebase App with default credentials: {exc}")
             return None
 
     service_account_path = Path(key_path).expanduser()
     if not service_account_path.is_absolute():
-        service_account_path = (
-            Path(__file__).resolve().parents[2] / service_account_path
-        )
+        service_account_path = Path(__file__).resolve().parents[2] / service_account_path
 
     if not service_account_path.is_file():
-        raise RuntimeError(
-            f"Firebase service account file not found: {service_account_path}"
-        )
+        raise RuntimeError(f"Firebase service account file not found: {service_account_path}")
 
     credential = credentials.Certificate(str(service_account_path))
     return firebase_admin.initialize_app(credential, options=options)
@@ -99,20 +84,13 @@ async def get_current_firebase_uid(
     token = bearer_credentials.credentials
 
     # Allow mock-token bypass ONLY when Firebase is not configured (local dev)
-    is_project_id_configured = bool(
-        settings.firebase_project_id
-        and settings.firebase_project_id != "your-firebase-project-id"
-    )
-    firebase_configured = is_project_id_configured or bool(
-        settings.firebase_service_account_key_path
-    )
+    is_project_id_configured = bool(settings.firebase_project_id and settings.firebase_project_id != "your-firebase-project-id")
+    firebase_configured = is_project_id_configured or bool(settings.firebase_service_account_key_path)
     if token == "mock-token" and not firebase_configured:
         return "mock-user-uid"
 
     if not firebase_configured:
-        raise _unauthorized(
-            "Firebase is not configured and the provided token is not a valid mock-token"
-        )
+        raise _unauthorized("Firebase is not configured and the provided token is not a valid mock-token")
 
     try:
         decoded_token = await run_in_threadpool(

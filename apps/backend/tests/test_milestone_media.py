@@ -169,9 +169,7 @@ def _mock_storage(
     from app.services.storage import StorageError
 
     svc = MagicMock()
-    svc.upload_fileobj = AsyncMock(
-        side_effect=StorageError("R2 down") if upload_raises else None
-    )
+    svc.upload_fileobj = AsyncMock(side_effect=StorageError("R2 down") if upload_raises else None)
     svc.delete_object = AsyncMock()
     svc.create_presigned_download_url = AsyncMock(return_value=url)
 

@@ -49,9 +49,7 @@ async def test_check_and_send_active_sleep_triggers_alert():
     baby = MagicMock()
     baby.id = 9999
     baby.name = "TestBaby"
-    baby.birth_date = date.today() - timedelta(
-        days=60
-    )  # Under 4 months (always active)
+    baby.birth_date = date.today() - timedelta(days=60)  # Under 4 months (always active)
 
     # Build a fake active sleep session that started 100 minutes ago (> 90 min threshold)
     sleep = MagicMock()

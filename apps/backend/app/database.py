@@ -75,10 +75,7 @@ async def verify_and_setup_db() -> None:
             if settings.is_production:
                 # In production, SQLite is never acceptable — fail fast so the
                 # container restarter can surface the misconfiguration clearly.
-                raise RuntimeError(
-                    f"FATAL: PostgreSQL is unreachable in production. "
-                    f"Refusing SQLite fallback. Error: {e}"
-                ) from e
+                raise RuntimeError(f"FATAL: PostgreSQL is unreachable in production. Refusing SQLite fallback. Error: {e}") from e
             logger.warning(
                 "PostgreSQL unavailable: %s — falling back to SQLite (dev/test only).",
                 e,
@@ -86,11 +83,7 @@ async def verify_and_setup_db() -> None:
             use_sqlite = True
 
     if use_sqlite or "sqlite" in db_url:
-        db_name = (
-            "test_baby_tracker.db"
-            if os.environ.get("PYTEST_CURRENT_TEST")
-            else "baby_tracker.db"
-        )
+        db_name = "test_baby_tracker.db" if os.environ.get("PYTEST_CURRENT_TEST") else "baby_tracker.db"
         fallback_url = f"sqlite+aiosqlite:///./{db_name}"
         engine = create_async_engine(
             fallback_url,
@@ -135,7 +128,4 @@ async def verify_and_setup_db() -> None:
             class_=AsyncSession,
             expire_on_commit=False,
         )
-        logger.info(
-            "PostgreSQL ready. Schema managed by Alembic — "
-            "ensure `alembic upgrade head` was run before startup."
-        )
+        logger.info("PostgreSQL ready. Schema managed by Alembic — ensure `alembic upgrade head` was run before startup.")

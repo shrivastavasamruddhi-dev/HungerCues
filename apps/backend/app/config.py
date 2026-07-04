@@ -11,9 +11,7 @@ class Settings(BaseSettings):
     )
 
     # Database
-    database_url: str = (
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/baby_tracker"
-    )
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/baby_tracker"
 
     # Firebase
     firebase_project_id: str = ""
@@ -42,9 +40,7 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed origins, e.g.:
     # "https://app.example.com,https://www.example.com"
     # Defaults to localhost for development.
-    allowed_origins: str = (
-        "http://localhost:3000,http://localhost:8081,exp://localhost:8081"
-    )
+    allowed_origins: str = "http://localhost:3000,http://localhost:8081,exp://localhost:8081"
 
     # Security — Rate Limiting
     rate_limit_per_minute: int = 60  # General API rate limit

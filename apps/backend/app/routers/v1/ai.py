@@ -57,22 +57,12 @@ async def get_insights(
         raise HTTPException(status_code=404, detail="Baby not found")
 
     # 3. Fetch feeding logs (limit to last 20 for prompt size)
-    feeding_stmt = (
-        select(Feeding)
-        .where(Feeding.baby_id == baby_id)
-        .order_by(Feeding.start_time.desc())
-        .limit(20)
-    )
+    feeding_stmt = select(Feeding).where(Feeding.baby_id == baby_id).order_by(Feeding.start_time.desc()).limit(20)
     feedings_result = await db.execute(feeding_stmt)
     feedings = feedings_result.scalars().all()
 
     # 4. Fetch sleep logs (limit to last 20)
-    sleep_stmt = (
-        select(SleepSession)
-        .where(SleepSession.baby_id == baby_id)
-        .order_by(SleepSession.sleep_start.desc())
-        .limit(20)
-    )
+    sleep_stmt = select(SleepSession).where(SleepSession.baby_id == baby_id).order_by(SleepSession.sleep_start.desc()).limit(20)
     sleep_result = await db.execute(sleep_stmt)
     sleep_sessions = sleep_result.scalars().all()
 
@@ -130,22 +120,12 @@ async def ask_question(
         raise HTTPException(status_code=404, detail="Baby not found")
 
     # 2. Fetch feeding logs (limit to last 20 for prompt size)
-    feeding_stmt = (
-        select(Feeding)
-        .where(Feeding.baby_id == baby_id)
-        .order_by(Feeding.start_time.desc())
-        .limit(20)
-    )
+    feeding_stmt = select(Feeding).where(Feeding.baby_id == baby_id).order_by(Feeding.start_time.desc()).limit(20)
     feedings_result = await db.execute(feeding_stmt)
     feedings = feedings_result.scalars().all()
 
     # 3. Fetch sleep logs (limit to last 20)
-    sleep_stmt = (
-        select(SleepSession)
-        .where(SleepSession.baby_id == baby_id)
-        .order_by(SleepSession.sleep_start.desc())
-        .limit(20)
-    )
+    sleep_stmt = select(SleepSession).where(SleepSession.baby_id == baby_id).order_by(SleepSession.sleep_start.desc()).limit(20)
     sleep_result = await db.execute(sleep_stmt)
     sleep_sessions = sleep_result.scalars().all()
 
@@ -208,11 +188,7 @@ async def get_weekly_summary(
     cutoff = datetime.now(UTC) - timedelta(days=7)
 
     # 4. Fetch last 7 days of all log types
-    f_stmt = (
-        select(Feeding)
-        .where(Feeding.baby_id == baby_id, Feeding.start_time >= cutoff)
-        .order_by(Feeding.start_time.desc())
-    )
+    f_stmt = select(Feeding).where(Feeding.baby_id == baby_id, Feeding.start_time >= cutoff).order_by(Feeding.start_time.desc())
     s_stmt = (
         select(SleepSession)
         .where(SleepSession.baby_id == baby_id, SleepSession.sleep_start >= cutoff)

@@ -112,9 +112,7 @@ async def delete_notification(
 ):
     """Remove a single notification entry by ID from the in-memory log."""
     original_len = len(notification_log)
-    to_keep = [
-        entry for entry in notification_log if entry.get("id") != notification_id
-    ]
+    to_keep = [entry for entry in notification_log if entry.get("id") != notification_id]
     if len(to_keep) == original_len:
         raise HTTPException(status_code=404, detail="Notification not found")
     notification_log.clear()

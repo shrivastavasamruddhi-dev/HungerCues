@@ -73,11 +73,7 @@ async def list_feedings(
     db: AsyncSession = Depends(get_db),
     firebase_uid: str = Depends(get_current_firebase_uid),
 ):
-    stmt = (
-        select(Feeding)
-        .where(Feeding.baby_id == baby_id, Feeding.deleted_at == None)
-        .order_by(Feeding.start_time.desc())
-    )
+    stmt = select(Feeding).where(Feeding.baby_id == baby_id, Feeding.deleted_at == None).order_by(Feeding.start_time.desc())
     result = await db.execute(stmt)
     return result.scalars().all()
 

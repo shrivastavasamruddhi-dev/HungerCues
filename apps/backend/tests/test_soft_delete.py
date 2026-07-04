@@ -1,6 +1,9 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+
 import pytest
+
 from app.models.baby import Baby
+
 
 @pytest.mark.asyncio
 async def test_soft_delete_flow(db_session, async_client):
@@ -9,7 +12,7 @@ async def test_soft_delete_flow(db_session, async_client):
         name="Soft Delete Baby",
         birth_date=datetime(2026, 1, 1).date(),
         gender="Boy",
-        family_id="mock-user-uid"
+        family_id="mock-user-uid",
     )
     db_session.add(baby)
     await db_session.commit()
@@ -26,8 +29,8 @@ async def test_soft_delete_flow(db_session, async_client):
             "start_time": now_str,
             "duration_minutes": 10,
             "quantity_ml": 100,
-            "notes": "Deleted soon"
-        }
+            "notes": "Deleted soon",
+        },
     )
     assert f_res.status_code == 200
     feeding_id = f_res.json()["id"]
@@ -41,11 +44,11 @@ async def test_soft_delete_flow(db_session, async_client):
             "sleep_end": now_str,
             "duration_minutes": 30,
             "tracking_method": "manual",
-            "notes": "Going to sleep"
-        }
+            "notes": "Going to sleep",
+        },
     )
     assert s_res.status_code == 200
-    sleep_id = s_res.json()["id"]
+    _ = s_res.json()["id"]
 
     # 4. Check active lists
     f_list = await async_client.get(f"/api/v1/feedings/baby/{baby.id}")
@@ -75,7 +78,9 @@ async def test_soft_delete_flow(db_session, async_client):
     assert len(del_data["sleep"]) == 0
 
     # 8. Restore feeding
-    restore_res = await async_client.post(f"/api/v1/activities/restore/feed/{feeding_id}")
+    restore_res = await async_client.post(
+        f"/api/v1/activities/restore/feed/{feeding_id}"
+    )
     assert restore_res.status_code == 200
     assert restore_res.json()["status"] == "success"
 
@@ -87,12 +92,13 @@ async def test_soft_delete_flow(db_session, async_client):
     assert len(deleted_list2.json()["feedings"]) == 0
 
     # 10. Test invalid kind / non-existent item edge cases
-    err_res = await async_client.delete(f"/api/v1/feedings/99999")
+    err_res = await async_client.delete("/api/v1/feedings/99999")
     assert err_res.status_code == 404
 
-    err_res2 = await async_client.post(f"/api/v1/activities/restore/invalid_kind/{feeding_id}")
+    err_res2 = await async_client.post(
+        f"/api/v1/activities/restore/invalid_kind/{feeding_id}"
+    )
     assert err_res2.status_code == 400
 
-    err_res3 = await async_client.post(f"/api/v1/activities/restore/feed/99999")
+    err_res3 = await async_client.post("/api/v1/activities/restore/feed/99999")
     assert err_res3.status_code == 404
-

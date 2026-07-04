@@ -7,6 +7,7 @@ to replace the default Python logging format with structured JSON output.
 In production, these JSON logs can be shipped to any log aggregator
 (ELK, Loki, CloudWatch, etc.) without additional parsing configuration.
 """
+
 import logging
 import sys
 

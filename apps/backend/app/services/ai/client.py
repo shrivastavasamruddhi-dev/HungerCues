@@ -1,6 +1,12 @@
 import logging
+
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from app.config import settings
 
@@ -20,7 +26,9 @@ class GeminiClient:
         retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError)),
         reraise=True,
     )
-    async def generate_content(self, prompt: str, system_instruction: str | None = None) -> str:
+    async def generate_content(
+        self, prompt: str, system_instruction: str | None = None
+    ) -> str:
         """Call Gemini API to generate content with retries."""
         if not self.api_key:
             logger.warning("GEMINI_API_KEY is not configured. Returning mock response.")
@@ -30,24 +38,12 @@ class GeminiClient:
 
         # Setup standard Gemini payload structure
         contents = {
-            "contents": [
-                {
-                    "parts": [
-                        {"text": prompt}
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "responseMimeType": "application/json"
-            }
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"responseMimeType": "application/json"},
         }
 
         if system_instruction:
-            contents["systemInstruction"] = {
-                "parts": [
-                    {"text": system_instruction}
-                ]
-            }
+            contents["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(url, json=contents)
@@ -65,10 +61,13 @@ class GeminiClient:
     def _get_mock_response(self, prompt: str = "") -> str:
         """Fallback mock response when Gemini API key is missing."""
         import json
+
         if "Parent's Question" in prompt or "answer" in prompt:
-            return json.dumps({
-                "answer": "This is a local mock response because no GEMINI_API_KEY was configured. Please set the GEMINI_API_KEY environment variable in your backend .env file to enable live Gemini answers."
-            })
+            return json.dumps(
+                {
+                    "answer": "This is a local mock response because no GEMINI_API_KEY was configured. Please set the GEMINI_API_KEY environment variable in your backend .env file to enable live Gemini answers."
+                }
+            )
         mock_data = {
             "summary": "This is a placeholder parenting insight since the Gemini API key was not configured. Baby seems to be feeding well and sleeping regularly.",
             "feeding_insights": "Feeding duration and quantity appear normal for this age group. Continue tracking details.",
@@ -76,7 +75,7 @@ class GeminiClient:
             "recommendations": [
                 "Establish a consistent pre-bedtime routine.",
                 "Ensure feedings are evenly spaced throughout the day.",
-                "Monitor for hunger cues like rooting or lip-smacking before crying starts."
-            ]
+                "Monitor for hunger cues like rooting or lip-smacking before crying starts.",
+            ],
         }
         return json.dumps(mock_data)

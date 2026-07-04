@@ -12,11 +12,15 @@ class DeviceToken(Base):
     __tablename__ = "device_tokens"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_firebase_uid: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    user_firebase_uid: Mapped[str] = mapped_column(
+        String(255), nullable=False, index=True
+    )
     baby_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("babies.id", ondelete="CASCADE"),
         nullable=False,
     )
     fcm_token: Mapped[str] = mapped_column(String(512), unique=True, nullable=False)
-    registered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    registered_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )

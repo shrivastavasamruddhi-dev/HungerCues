@@ -80,7 +80,8 @@ async def verify_and_setup_db() -> None:
                     f"Refusing SQLite fallback. Error: {e}"
                 ) from e
             logger.warning(
-                "PostgreSQL unavailable: %s — falling back to SQLite (dev/test only).", e
+                "PostgreSQL unavailable: %s — falling back to SQLite (dev/test only).",
+                e,
             )
             use_sqlite = True
 
@@ -111,7 +112,12 @@ async def verify_and_setup_db() -> None:
                 "ALTER TABLE feedings ADD COLUMN breast_side VARCHAR(20)",
                 *[
                     f"ALTER TABLE {t} ADD COLUMN deleted_at DATETIME"
-                    for t in ["feedings", "sleep_sessions", "diaper_changes", "growth_records"]
+                    for t in [
+                        "feedings",
+                        "sleep_sessions",
+                        "diaper_changes",
+                        "growth_records",
+                    ]
                 ],
             ]:
                 try:
@@ -133,6 +139,3 @@ async def verify_and_setup_db() -> None:
             "PostgreSQL ready. Schema managed by Alembic — "
             "ensure `alembic upgrade head` was run before startup."
         )
-
-
-

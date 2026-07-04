@@ -1,14 +1,18 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+
 import pytest
+
 from app.routers.v1.notifications import notification_log
 
 # Override firebase auth for tests is not needed here because conftest provides it globally.
+
 
 @pytest.fixture(autouse=True)
 def clean_notification_log():
     notification_log.clear()
     yield
     notification_log.clear()
+
 
 @pytest.mark.asyncio
 async def test_notification_endpoints(async_client):
@@ -70,4 +74,3 @@ async def test_notification_endpoints(async_client):
     response = await async_client.get("/api/v1/notifications/recent")
     assert response.status_code == 200
     assert response.json() == []
-

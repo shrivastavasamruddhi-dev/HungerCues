@@ -107,7 +107,9 @@ def get_storage_service() -> R2StorageService:
     return _storage_service
 
 
-def storage_http_error(message: str = "Media storage operation failed") -> HTTPException:
+def storage_http_error(
+    message: str = "Media storage operation failed",
+) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_502_BAD_GATEWAY,
         detail={"code": "storage_failure", "message": message},

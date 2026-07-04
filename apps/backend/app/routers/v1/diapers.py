@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
@@ -27,11 +27,11 @@ class DiaperChangeSchema(DiaperChangeCreate):
     class Config:
         from_attributes = True
 
-    @field_validator('changed_at', 'deleted_at', mode='after')
+    @field_validator("changed_at", "deleted_at", mode="after")
     @classmethod
     def ensure_utc(cls, v: datetime | None) -> datetime | None:
         if v is not None and v.tzinfo is None:
-            return v.replace(tzinfo=timezone.utc)
+            return v.replace(tzinfo=UTC)
         return v
 
 
@@ -79,4 +79,3 @@ async def delete_diaper_change(
     await db.commit()
     await invalidate_baby_cache(change.baby_id)
     return {"status": "success"}
-

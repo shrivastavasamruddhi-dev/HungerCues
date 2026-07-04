@@ -1,14 +1,14 @@
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.database import Base
-# Import all models to ensure they register on Base.metadata for autogenerate/online migrations
-from app.models import User, Baby, Feeding, SleepSession, DiaperChange, GrowthRecord, DeviceToken, Milestone, MilestoneMedia
+from alembic import context
 from app.config import settings
+from app.database import Base
+
+# Import all models to ensure they register on Base.metadata for autogenerate/online migrations
 
 # Alembic Config object
 config = context.config

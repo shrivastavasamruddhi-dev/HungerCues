@@ -1,20 +1,20 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from pydantic import BaseModel
 
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
-from app.models.feeding import Feeding
-from app.models.sleep import SleepSession
 from app.models.diaper import DiaperChange
+from app.models.feeding import Feeding
 from app.models.growth import GrowthRecord
-
-from app.routers.v1.feedings import FeedingSchema
-from app.routers.v1.sleep import SleepSessionSchema
+from app.models.sleep import SleepSession
 from app.routers.v1.diapers import DiaperChangeSchema
+from app.routers.v1.feedings import FeedingSchema
 from app.routers.v1.growth import GrowthRecordSchema
+from app.routers.v1.sleep import SleepSessionSchema
 from app.services.cache import invalidate_baby_cache
 
 router = APIRouter()
@@ -34,37 +34,41 @@ async def list_deleted_activities(
     firebase_uid: str = Depends(get_current_firebase_uid),
 ):
     # Fetch soft-deleted records from the last 24 hours
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
 
     # 1. Feedings
-    feeding_stmt = select(Feeding).where(
-        Feeding.baby_id == baby_id,
-        Feeding.deleted_at >= cutoff
-    ).order_by(Feeding.deleted_at.desc())
+    feeding_stmt = (
+        select(Feeding)
+        .where(Feeding.baby_id == baby_id, Feeding.deleted_at >= cutoff)
+        .order_by(Feeding.deleted_at.desc())
+    )
     feeding_res = await db.execute(feeding_stmt)
     feedings = feeding_res.scalars().all()
 
     # 2. Sleep Sessions
-    sleep_stmt = select(SleepSession).where(
-        SleepSession.baby_id == baby_id,
-        SleepSession.deleted_at >= cutoff
-    ).order_by(SleepSession.deleted_at.desc())
+    sleep_stmt = (
+        select(SleepSession)
+        .where(SleepSession.baby_id == baby_id, SleepSession.deleted_at >= cutoff)
+        .order_by(SleepSession.deleted_at.desc())
+    )
     sleep_res = await db.execute(sleep_stmt)
     sleep = sleep_res.scalars().all()
 
     # 3. Diaper Changes
-    diaper_stmt = select(DiaperChange).where(
-        DiaperChange.baby_id == baby_id,
-        DiaperChange.deleted_at >= cutoff
-    ).order_by(DiaperChange.deleted_at.desc())
+    diaper_stmt = (
+        select(DiaperChange)
+        .where(DiaperChange.baby_id == baby_id, DiaperChange.deleted_at >= cutoff)
+        .order_by(DiaperChange.deleted_at.desc())
+    )
     diaper_res = await db.execute(diaper_stmt)
     diapers = diaper_res.scalars().all()
 
     # 4. Growth Records
-    growth_stmt = select(GrowthRecord).where(
-        GrowthRecord.baby_id == baby_id,
-        GrowthRecord.deleted_at >= cutoff
-    ).order_by(GrowthRecord.deleted_at.desc())
+    growth_stmt = (
+        select(GrowthRecord)
+        .where(GrowthRecord.baby_id == baby_id, GrowthRecord.deleted_at >= cutoff)
+        .order_by(GrowthRecord.deleted_at.desc())
+    )
     growth_res = await db.execute(growth_stmt)
     growth = growth_res.scalars().all()
 
@@ -109,4 +113,3 @@ async def restore_activity(
     await db.commit()
     await invalidate_baby_cache(record.baby_id)
     return {"status": "success"}
-

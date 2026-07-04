@@ -5,7 +5,9 @@ Auth is handled by the module-level override in conftest.py (or the base overrid
 """
 
 from datetime import datetime
+
 import pytest
+
 from app.models.baby import Baby
 
 _OWNER_UID = "mock-user-uid"
@@ -66,4 +68,3 @@ async def test_milestone_endpoints(db_session, async_client):
     list_response_after = await async_client.get(f"/api/v1/milestones/baby/{baby.id}")
     assert list_response_after.status_code == 200
     assert len(list_response_after.json()) == 0
-

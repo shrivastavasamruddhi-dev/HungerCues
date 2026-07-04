@@ -1,5 +1,6 @@
 import json
 import logging
+
 from app.services.ai.client import GeminiClient
 from app.services.ai.schemas import (
     AIInsightRequest,
@@ -17,7 +18,9 @@ class AIService:
     def __init__(self):
         self.client = GeminiClient()
 
-    async def get_parenting_insights(self, request: AIInsightRequest) -> AIInsightResponse:
+    async def get_parenting_insights(
+        self, request: AIInsightRequest
+    ) -> AIInsightResponse:
         """Construct prompt, call Gemini, and parse response into AIInsightResponse."""
         system_instruction = (
             "You are a helpful, professional, and empathetic pediatric nurse and parenting assistant. "
@@ -31,13 +34,13 @@ class AIService:
         feeding_text = ""
         for i, f in enumerate(request.feedings):
             qty = f"{f.quantity_ml}ml" if f.quantity_ml else "N/A"
-            feeding_text += f"- Feeding #{i+1}: Type={f.type}, Start={f.start_time.isoformat()}, Duration={f.duration_minutes}m, Qty={qty}, Notes='{f.notes or ''}'\n"
+            feeding_text += f"- Feeding #{i + 1}: Type={f.type}, Start={f.start_time.isoformat()}, Duration={f.duration_minutes}m, Qty={qty}, Notes='{f.notes or ''}'\n"
 
         sleep_text = ""
         for i, s in enumerate(request.sleep_sessions):
             end_time = s.sleep_end.isoformat() if s.sleep_end else "Ongoing"
             dur = f"{s.duration_minutes}m" if s.duration_minutes else "N/A"
-            sleep_text += f"- Sleep #{i+1}: Start={s.sleep_start.isoformat()}, End={end_time}, Duration={dur}, Method={s.tracking_method}, Notes='{s.notes or ''}'\n"
+            sleep_text += f"- Sleep #{i + 1}: Start={s.sleep_start.isoformat()}, End={end_time}, Duration={dur}, Method={s.tracking_method}, Notes='{s.notes or ''}'\n"
 
         prompt = (
             f"Please analyze the following details for baby '{request.baby_name}' "
@@ -52,8 +55,10 @@ class AIService:
         )
 
         try:
-            raw_response = await self.client.generate_content(prompt, system_instruction)
-            
+            raw_response = await self.client.generate_content(
+                prompt, system_instruction
+            )
+
             # Clean up potential markdown fences if present
             cleaned_response = raw_response.strip()
             if cleaned_response.startswith("```"):
@@ -68,7 +73,9 @@ class AIService:
             data = json.loads(cleaned_response)
             return AIInsightResponse(**data)
         except Exception as e:
-            logger.error(f"Error parsing Gemini response or getting insights: {e}", exc_info=True)
+            logger.error(
+                f"Error parsing Gemini response or getting insights: {e}", exc_info=True
+            )
             # Return a graceful fallback if anything fails
             return AIInsightResponse(
                 summary=f"We processed the logs for {request.baby_name}. They are doing great! Let's continue tracking to find deeper patterns.",
@@ -77,8 +84,8 @@ class AIService:
                 recommendations=[
                     "Maintain the feeding schedule you've started.",
                     "Track sleep using the live sleep timer to get exact nap durations.",
-                    "Consult your pediatrician if you notice any sudden changes in feeding/sleeping patterns."
-                ]
+                    "Consult your pediatrician if you notice any sudden changes in feeding/sleeping patterns.",
+                ],
             )
 
     async def ask_baby_question(self, request: AIInsightRequest, question: str) -> str:
@@ -95,13 +102,13 @@ class AIService:
         feeding_text = ""
         for i, f in enumerate(request.feedings):
             qty = f"{f.quantity_ml}ml" if f.quantity_ml else "N/A"
-            feeding_text += f"- Feeding #{i+1}: Type={f.type}, Start={f.start_time.isoformat()}, Duration={f.duration_minutes}m, Qty={qty}, Notes='{f.notes or ''}'\n"
+            feeding_text += f"- Feeding #{i + 1}: Type={f.type}, Start={f.start_time.isoformat()}, Duration={f.duration_minutes}m, Qty={qty}, Notes='{f.notes or ''}'\n"
 
         sleep_text = ""
         for i, s in enumerate(request.sleep_sessions):
             end_time = s.sleep_end.isoformat() if s.sleep_end else "Ongoing"
             dur = f"{s.duration_minutes}m" if s.duration_minutes else "N/A"
-            sleep_text += f"- Sleep #{i+1}: Start={s.sleep_start.isoformat()}, End={end_time}, Duration={dur}, Method={s.tracking_method}, Notes='{s.notes or ''}'\n"
+            sleep_text += f"- Sleep #{i + 1}: Start={s.sleep_start.isoformat()}, End={end_time}, Duration={dur}, Method={s.tracking_method}, Notes='{s.notes or ''}'\n"
 
         prompt = (
             f"Please review the following details for baby '{request.baby_name}' "
@@ -113,7 +120,9 @@ class AIService:
         )
 
         try:
-            raw_response = await self.client.generate_content(prompt, system_instruction)
+            raw_response = await self.client.generate_content(
+                prompt, system_instruction
+            )
             cleaned_response = raw_response.strip()
             if cleaned_response.startswith("```"):
                 lines = cleaned_response.splitlines()
@@ -127,9 +136,11 @@ class AIService:
             return data.get("answer", "I could not generate an answer at this time.")
         except Exception as e:
             logger.error(f"Error answering question: {e}", exc_info=True)
-            return f"I'm sorry, I encountered an error while processing your question. Please try again."
+            return "I'm sorry, I encountered an error while processing your question. Please try again."
 
-    async def get_weekly_summary(self, request: AIWeeklySummaryRequest) -> AIWeeklySummaryResponse:
+    async def get_weekly_summary(
+        self, request: AIWeeklySummaryRequest
+    ) -> AIWeeklySummaryResponse:
         """Generate a comprehensive 7-day summary of all baby logs using Gemini."""
         system_instruction = (
             "You are a helpful, professional, and empathetic pediatric nurse and parenting assistant. "
@@ -142,22 +153,24 @@ class AIService:
         feeding_text = ""
         for i, f in enumerate(request.feedings):
             qty = f"{f.quantity_ml}ml" if f.quantity_ml else "N/A"
-            feeding_text += f"- #{i+1}: Type={f.type}, Time={f.start_time.strftime('%a %H:%M')}, Duration={f.duration_minutes}m, Qty={qty}\n"
+            feeding_text += f"- #{i + 1}: Type={f.type}, Time={f.start_time.strftime('%a %H:%M')}, Duration={f.duration_minutes}m, Qty={qty}\n"
 
         sleep_text = ""
         for i, s in enumerate(request.sleep_sessions):
             dur = f"{s.duration_minutes}m" if s.duration_minutes else "N/A"
-            sleep_text += f"- #{i+1}: Start={s.sleep_start.strftime('%a %H:%M')}, Duration={dur}, Method={s.tracking_method}\n"
+            sleep_text += f"- #{i + 1}: Start={s.sleep_start.strftime('%a %H:%M')}, Duration={dur}, Method={s.tracking_method}\n"
 
         diaper_text = ""
         for i, d in enumerate(request.diapers):
-            diaper_text += f"- #{i+1}: Type={d.type}, Time={d.changed_at.strftime('%a %H:%M')}\n"
+            diaper_text += (
+                f"- #{i + 1}: Type={d.type}, Time={d.changed_at.strftime('%a %H:%M')}\n"
+            )
 
         growth_text = ""
         for i, g in enumerate(request.growth_records):
             w = f"{g.weight_kg:.2f} kg" if g.weight_kg else "N/A"
             h = f"{g.height_cm:.1f} cm" if g.height_cm else "N/A"
-            growth_text += f"- #{i+1}: Date={g.recorded_at.strftime('%a %b %d')}, Weight={w}, Height={h}\n"
+            growth_text += f"- #{i + 1}: Date={g.recorded_at.strftime('%a %b %d')}, Weight={w}, Height={h}\n"
 
         prompt = (
             f"Please generate a comprehensive WEEKLY summary for baby '{request.baby_name}' "
@@ -180,7 +193,9 @@ class AIService:
         )
 
         try:
-            raw_response = await self.client.generate_content(prompt, system_instruction)
+            raw_response = await self.client.generate_content(
+                prompt, system_instruction
+            )
             cleaned_response = raw_response.strip()
             if cleaned_response.startswith("```"):
                 lines = cleaned_response.splitlines()

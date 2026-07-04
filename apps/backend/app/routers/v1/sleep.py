@@ -1,8 +1,9 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from pydantic import BaseModel, field_validator
 
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
@@ -40,11 +41,11 @@ class SleepSessionSchema(BaseModel):
     class Config:
         from_attributes = True
 
-    @field_validator('sleep_start', 'sleep_end', 'deleted_at', mode='after')
+    @field_validator("sleep_start", "sleep_end", "deleted_at", mode="after")
     @classmethod
     def ensure_utc(cls, v: datetime | None) -> datetime | None:
         if v is not None and v.tzinfo is None:
-            return v.replace(tzinfo=timezone.utc)
+            return v.replace(tzinfo=UTC)
         return v
 
 
@@ -88,7 +89,7 @@ async def update_sleep_session(
         raise HTTPException(status_code=404, detail="Sleep session not found")
 
     session.sleep_end = sleep_up.sleep_end
-    
+
     duration = sleep_up.duration_minutes
     if not duration:
         diff = sleep_up.sleep_end - session.sleep_start
@@ -110,7 +111,11 @@ async def list_sleep_sessions(
     db: AsyncSession = Depends(get_db),
     firebase_uid: str = Depends(get_current_firebase_uid),
 ):
-    stmt = select(SleepSession).where(SleepSession.baby_id == baby_id, SleepSession.deleted_at == None).order_by(SleepSession.sleep_start.desc())
+    stmt = (
+        select(SleepSession)
+        .where(SleepSession.baby_id == baby_id, SleepSession.deleted_at == None)
+        .order_by(SleepSession.sleep_start.desc())
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -130,4 +135,3 @@ async def delete_sleep_session(
     await db.commit()
     await invalidate_baby_cache(session.baby_id)
     return {"status": "success"}
-

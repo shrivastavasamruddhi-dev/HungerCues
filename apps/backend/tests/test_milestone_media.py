@@ -31,9 +31,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
-import app.database as db_module
 from app.dependencies.auth import get_current_firebase_uid
 from app.main import app
 from app.models.baby import Baby
@@ -63,8 +62,10 @@ OTHER_UID = "other-test-uid"
 
 async def _make_uid_dep(uid: str):
     """Return a fresh async callable that always returns uid."""
+
     async def _dep() -> str:
         return uid
+
     return _dep
 
 
@@ -77,6 +78,7 @@ def as_user(uid: str):
     for the duration of the block, then restores whatever was there before.
     Safe across any module import ordering.
     """
+
     async def _temp_uid() -> str:
         return uid
 
@@ -97,6 +99,7 @@ def reset_auth():
     Ensure every test starts as OWNER_UID, regardless of what other test
     modules may have installed in app.dependency_overrides.
     """
+
     async def _owner_uid() -> str:
         return OWNER_UID
 
@@ -116,7 +119,6 @@ async def db(db_session):
 @pytest_asyncio.fixture
 async def client(async_client):
     yield async_client
-
 
 
 # ---------------------------------------------------------------------------
@@ -541,9 +543,7 @@ async def test_delete_media_wrong_user(client, owner_baby):
         )
     media_id = upload.json()["id"]
     with as_user(OTHER_UID):
-        r = await client.delete(
-            f"/api/v1/milestones/{created['id']}/media/{media_id}"
-        )
+        r = await client.delete(f"/api/v1/milestones/{created['id']}/media/{media_id}")
     assert r.status_code == 403
 
 

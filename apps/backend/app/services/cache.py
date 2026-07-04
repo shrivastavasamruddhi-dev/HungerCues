@@ -1,7 +1,8 @@
 import json
 import logging
 import os
-from typing import Any, Optional
+from typing import Any
+
 import redis.asyncio as aioredis
 
 from app.config import settings
@@ -12,16 +13,16 @@ logger = logging.getLogger(__name__)
 class CacheService:
     """
     Redis Caching service for expensive AI insights and analytics.
-    
+
     Automatically bypasses connection if running in a test environment
     or if Redis is unreachable, falling back gracefully to no-cache behavior.
     """
 
     def __init__(self):
-        self.redis: Optional[aioredis.Redis] = None
+        self.redis: aioredis.Redis | None = None
         self._disabled = False
 
-    async def get_client(self) -> Optional[aioredis.Redis]:
+    async def get_client(self) -> aioredis.Redis | None:
         if self._disabled or os.environ.get("PYTEST_CURRENT_TEST"):
             return None
         if self.redis is not None:
@@ -39,12 +40,14 @@ class CacheService:
             logger.info("Connected to Redis cache backend.")
             return self.redis
         except Exception as e:
-            logger.warning("Redis cache connection failed (falling back to no-cache): %s", e)
+            logger.warning(
+                "Redis cache connection failed (falling back to no-cache): %s", e
+            )
             self._disabled = True  # Avoid continuous reconnect attempts on failure
             self.redis = None
             return None
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         client = await self.get_client()
         if not client:
             return None

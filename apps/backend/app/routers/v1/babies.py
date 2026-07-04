@@ -1,8 +1,9 @@
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from pydantic import BaseModel
 
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
@@ -56,18 +57,18 @@ async def list_babies(
     stmt = select(Baby).where(Baby.family_id == firebase_uid)
     result = await db.execute(stmt)
     babies = result.scalars().all()
-    
+
     # If no babies exist, let's create a default one for quick presentation/demo
     if not babies:
         default_baby = Baby(
             name="Charlie",
             birth_date=date(2026, 1, 1),
             gender="Boy",
-            family_id=firebase_uid
+            family_id=firebase_uid,
         )
         db.add(default_baby)
         await db.commit()
         await db.refresh(default_baby)
         babies = [default_baby]
-        
+
     return babies

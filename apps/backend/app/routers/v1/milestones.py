@@ -19,11 +19,10 @@ Media limits
 
 from __future__ import annotations
 
+import io
 import logging
 import uuid
-from datetime import date, datetime, timezone
-
-import io
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
@@ -51,7 +50,7 @@ PHOTO_MIME_TYPES: frozenset[str] = frozenset(
 VIDEO_MIME_TYPES: frozenset[str] = frozenset({"video/mp4", "video/quicktime"})
 ALLOWED_MIME_TYPES: frozenset[str] = PHOTO_MIME_TYPES | VIDEO_MIME_TYPES
 
-MAX_PHOTO_BYTES = 10 * 1024 * 1024   # 10 MB
+MAX_PHOTO_BYTES = 10 * 1024 * 1024  # 10 MB
 MAX_VIDEO_BYTES = 100 * 1024 * 1024  # 100 MB
 MAX_MEDIA_PER_MILESTONE = 10
 
@@ -115,7 +114,9 @@ async def _get_owned_baby(
     result = await db.execute(select(Baby).where(Baby.id == baby_id))
     baby = result.scalar_one_or_none()
     if baby is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Baby not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Baby not found"
+        )
     if baby.family_id != firebase_uid:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -187,7 +188,9 @@ def _validate_upload(file: UploadFile, data: bytes) -> None:
         )
 
 
-async def _milestone_with_urls(milestone: Milestone, db: AsyncSession) -> MilestoneSchema:
+async def _milestone_with_urls(
+    milestone: Milestone, db: AsyncSession
+) -> MilestoneSchema:
     """Build a MilestoneSchema, generating presigned URLs for each media item."""
     storage = get_storage_service()
     media_out: list[MilestoneMediaSchema] = []
@@ -210,7 +213,7 @@ async def _milestone_with_urls(milestone: Milestone, db: AsyncSession) -> Milest
                 created_at=(
                     m.created_at
                     if m.created_at.tzinfo
-                    else m.created_at.replace(tzinfo=timezone.utc)
+                    else m.created_at.replace(tzinfo=UTC)
                 ),
                 download_url=url,
             )
@@ -249,7 +252,9 @@ async def create_milestone(
     await db.commit()
 
     # Re-fetch with media relationship loaded (empty list at creation)
-    milestone = await _get_owned_milestone(milestone.id, firebase_uid, db, load_media=True)
+    milestone = await _get_owned_milestone(
+        milestone.id, firebase_uid, db, load_media=True
+    )
     return await _milestone_with_urls(milestone, db)
 
 
@@ -279,7 +284,9 @@ async def get_milestone(
     firebase_uid: str = Depends(get_current_firebase_uid),
 ):
     """Retrieve a single milestone with its media metadata."""
-    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
+    milestone = await _get_owned_milestone(
+        milestone_id, firebase_uid, db, load_media=True
+    )
     return await _milestone_with_urls(milestone, db)
 
 
@@ -291,7 +298,9 @@ async def update_milestone(
     firebase_uid: str = Depends(get_current_firebase_uid),
 ):
     """Partially update a milestone.  Caller must own the baby."""
-    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
+    milestone = await _get_owned_milestone(
+        milestone_id, firebase_uid, db, load_media=True
+    )
 
     if milestone_in.name is not None:
         milestone.name = milestone_in.name
@@ -304,7 +313,9 @@ async def update_milestone(
     await db.refresh(milestone)
 
     # Reload with media
-    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
+    milestone = await _get_owned_milestone(
+        milestone_id, firebase_uid, db, load_media=True
+    )
     return await _milestone_with_urls(milestone, db)
 
 
@@ -322,7 +333,9 @@ async def delete_milestone(
     but don't want to leave orphaned DB rows because R2 is idempotent on
     missing keys — operator can retry the R2 cleanup manually).
     """
-    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
+    milestone = await _get_owned_milestone(
+        milestone_id, firebase_uid, db, load_media=True
+    )
 
     storage = get_storage_service()
     for media in list(milestone.media):
@@ -364,7 +377,9 @@ async def upload_media(
     - Uses a UUID as the R2 object key (never the original filename).
     - Creates the DB record only after a successful upload.
     """
-    milestone = await _get_owned_milestone(milestone_id, firebase_uid, db, load_media=True)
+    milestone = await _get_owned_milestone(
+        milestone_id, firebase_uid, db, load_media=True
+    )
 
     # Check attachment cap
     if len(milestone.media) >= MAX_MEDIA_PER_MILESTONE:
@@ -436,7 +451,7 @@ async def upload_media(
 
     created_at = media_record.created_at
     if created_at and created_at.tzinfo is None:
-        created_at = created_at.replace(tzinfo=timezone.utc)
+        created_at = created_at.replace(tzinfo=UTC)
 
     return MilestoneMediaSchema(
         id=media_record.id,
@@ -445,7 +460,7 @@ async def upload_media(
         original_filename=media_record.original_filename,
         content_type=media_record.content_type,
         size_bytes=media_record.size_bytes,
-        created_at=created_at or datetime.now(timezone.utc),
+        created_at=created_at or datetime.now(UTC),
         download_url=url,
     )
 

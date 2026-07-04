@@ -1,8 +1,9 @@
-import pytest
 from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.jobs.notification_scheduler import is_active_hours, check_and_send
+import pytest
+
+from app.jobs.notification_scheduler import check_and_send, is_active_hours
 
 
 def test_is_active_hours_under_four_months():
@@ -32,6 +33,7 @@ async def test_check_and_send_no_babies():
 
     # Should not raise and should not append to notification_log
     from app.routers.v1.notifications import notification_log
+
     before = len(notification_log)
     await check_and_send(session)
     assert len(notification_log) == before
@@ -47,7 +49,9 @@ async def test_check_and_send_active_sleep_triggers_alert():
     baby = MagicMock()
     baby.id = 9999
     baby.name = "TestBaby"
-    baby.birth_date = date.today() - timedelta(days=60)  # Under 4 months (always active)
+    baby.birth_date = date.today() - timedelta(
+        days=60
+    )  # Under 4 months (always active)
 
     # Build a fake active sleep session that started 100 minutes ago (> 90 min threshold)
     sleep = MagicMock()
@@ -80,5 +84,3 @@ async def test_check_and_send_active_sleep_triggers_alert():
         await check_and_send(session)
 
     assert any(n["type"] == "sleep_timer" for n in notification_log)
-
-

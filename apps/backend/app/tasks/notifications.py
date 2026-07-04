@@ -5,6 +5,7 @@ This module replaces the asyncio notification_scheduler_loop that previously
 ran as a background task in the FastAPI lifespan. It is triggered by
 Celery Beat on a per-minute schedule (configured in app/worker.py).
 """
+
 import asyncio
 import logging
 

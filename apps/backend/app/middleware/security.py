@@ -4,6 +4,7 @@ Security and observability middleware for the Baby Tracker API.
 - SecurityHeadersMiddleware: Adds standard HTTP security headers to every response.
 - RequestIDMiddleware: Attaches a unique UUID to every request for end-to-end tracing.
 """
+
 import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware

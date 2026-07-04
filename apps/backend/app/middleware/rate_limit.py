@@ -6,6 +6,7 @@ Exports:
 - `rate_limit_exceeded_handler`: The 429 exception handler to register on the app.
 - Convenience limit decorators for general, AI, and auth endpoints.
 """
+
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address

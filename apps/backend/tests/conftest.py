@@ -8,13 +8,13 @@ Provides:
 
 All tests automatically get the Firebase auth override applied.
 """
-import pytest
-import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
 
-from app.main import app
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+
 import app.database as db_module
 from app.dependencies.auth import get_current_firebase_uid
+from app.main import app
 
 
 # ---------------------------------------------------------------------------

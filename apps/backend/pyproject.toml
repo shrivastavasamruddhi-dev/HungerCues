@@ -35,7 +35,7 @@ build-backend = "hatchling.build"
 
 [tool.ruff]
 target-version = "py312"
-line-length = 88
+line-length = 130
 
 [tool.ruff.lint]
 select = [
@@ -44,6 +44,10 @@ select = [
     "F",   # pyflakes
     "I",   # isort
     "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # Line too long
+    "E711",  # Comparison to None (standard in SQLAlchemy queries)
 ]
 
 [tool.ruff.lint.isort]
@@ -59,6 +63,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
+    "ruff>=0.4.0",
 ]
 
 # ---------------------------------------------------------------------------

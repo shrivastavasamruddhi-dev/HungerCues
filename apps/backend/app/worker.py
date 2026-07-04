@@ -12,12 +12,11 @@ Usage:
     # Start beat scheduler:
     celery -A app.worker beat --loglevel=info
 """
+
 import os
 
 from celery import Celery
 from celery.schedules import crontab
-
-from app.config import settings
 
 # ---------------------------------------------------------------------------
 # Redis connection URL — constructed from settings

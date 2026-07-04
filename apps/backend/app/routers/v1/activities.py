@@ -15,6 +15,7 @@ from app.routers.v1.feedings import FeedingSchema
 from app.routers.v1.sleep import SleepSessionSchema
 from app.routers.v1.diapers import DiaperChangeSchema
 from app.routers.v1.growth import GrowthRecordSchema
+from app.services.cache import invalidate_baby_cache
 
 router = APIRouter()
 
@@ -106,4 +107,6 @@ async def restore_activity(
 
     record.deleted_at = None
     await db.commit()
+    await invalidate_baby_cache(record.baby_id)
     return {"status": "success"}
+

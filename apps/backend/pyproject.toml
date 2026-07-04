@@ -91,3 +91,15 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
+
+# ---------------------------------------------------------------------------
+# Pyrefly (Meta's Python type-checker) configuration
+# Docs: https://pyrefly.org/en/stable/configuration/
+# ---------------------------------------------------------------------------
+[tool.pyrefly]
+# The tests/ directory uses pytest fixtures injected at runtime (db_module,
+# async_client, pytest_asyncio decorators, etc.) which cannot be resolved
+# statically. Excluding tests/ removes false-positive IDE errors without
+# hiding real errors in the application code.
+project-excludes = ["tests", ".venv", "migrations"]
+python-interpreter-path = ".venv/Scripts/python.exe"

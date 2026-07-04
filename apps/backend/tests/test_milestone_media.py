@@ -106,31 +106,17 @@ def reset_auth():
 
 
 # ---------------------------------------------------------------------------
-# DB lifecycle
+# DB lifecycle & HTTP Client (Delegated to shared conftest fixtures)
 # ---------------------------------------------------------------------------
-@pytest_asyncio.fixture(scope="module", autouse=True)
-async def setup_db():
-    await db_module.verify_and_setup_db()
-    async with db_module.engine.begin() as conn:
-        await conn.run_sync(db_module.Base.metadata.create_all)
-    yield
-    async with db_module.engine.begin() as conn:
-        await conn.run_sync(db_module.Base.metadata.drop_all)
+@pytest_asyncio.fixture
+async def db(db_session):
+    yield db_session
 
 
 @pytest_asyncio.fixture
-async def db():
-    async for session in db_module.get_db():
-        yield session
+async def client(async_client):
+    yield async_client
 
-
-# ---------------------------------------------------------------------------
-# Shared HTTP client
-# ---------------------------------------------------------------------------
-@pytest_asyncio.fixture
-async def client():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
 
 
 # ---------------------------------------------------------------------------

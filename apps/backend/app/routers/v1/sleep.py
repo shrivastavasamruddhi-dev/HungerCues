@@ -7,6 +7,7 @@ from pydantic import BaseModel, field_validator
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
 from app.models.sleep import SleepSession
+from app.services.cache import invalidate_baby_cache
 
 router = APIRouter()
 
@@ -69,6 +70,7 @@ async def create_sleep_session(
     db.add(sleep_session)
     await db.commit()
     await db.refresh(sleep_session)
+    await invalidate_baby_cache(sleep_session.baby_id)
     return sleep_session
 
 
@@ -98,6 +100,7 @@ async def update_sleep_session(
 
     await db.commit()
     await db.refresh(session)
+    await invalidate_baby_cache(session.baby_id)
     return session
 
 
@@ -125,4 +128,6 @@ async def delete_sleep_session(
         raise HTTPException(status_code=404, detail="Sleep session not found")
     session.deleted_at = datetime.utcnow()
     await db.commit()
+    await invalidate_baby_cache(session.baby_id)
     return {"status": "success"}
+

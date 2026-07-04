@@ -8,6 +8,7 @@ from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
 from app.models.growth import GrowthRecord
 from app.models.baby import Baby
+from app.services.cache import invalidate_baby_cache
 
 router = APIRouter()
 
@@ -70,6 +71,7 @@ async def create_growth_record(
     db.add(db_record)
     await db.commit()
     await db.refresh(db_record)
+    await invalidate_baby_cache(db_record.baby_id)
     return db_record
 
 
@@ -108,4 +110,6 @@ async def delete_growth_record(
         raise HTTPException(status_code=404, detail="Growth record not found")
     record.deleted_at = datetime.utcnow()
     await db.commit()
+    await invalidate_baby_cache(record.baby_id)
     return {"status": "success"}
+

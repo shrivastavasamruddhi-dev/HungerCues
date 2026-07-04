@@ -7,6 +7,7 @@ from pydantic import BaseModel, field_validator
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
 from app.models.feeding import Feeding
+from app.services.cache import invalidate_baby_cache
 
 router = APIRouter()
 
@@ -61,6 +62,7 @@ async def create_feeding(
     db.add(feeding)
     await db.commit()
     await db.refresh(feeding)
+    await invalidate_baby_cache(feeding.baby_id)
     return feeding
 
 
@@ -88,4 +90,6 @@ async def delete_feeding(
         raise HTTPException(status_code=404, detail="Feeding record not found")
     feeding.deleted_at = datetime.now(timezone.utc)
     await db.commit()
+    await invalidate_baby_cache(feeding.baby_id)
     return {"status": "success"}
+

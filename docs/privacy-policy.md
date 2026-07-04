@@ -1,152 +1,89 @@
-# Privacy Policy — HungerCues
+# Privacy Policy for HungerCues
 
-**Effective Date:** 1 July 2026  
-**Last Updated:** 1 July 2026
+*Last Updated: July 5, 2026*
 
-> [!IMPORTANT]
-> This is a template privacy policy. Before publishing HungerCues on the App Store or Play Store, have a qualified attorney review and customise this document for your specific jurisdiction and data practices.
+Welcome to **HungerCues** (the "App"), an AI-powered intelligent child development companion. Your privacy and the security of your child's data are of paramount importance to us. This Privacy Policy describes how HungerCues collects, uses, stores, and protects personal information.
 
 ---
 
-## 1. Who We Are
+## 1. Information We Collect
 
-HungerCues ("we", "our", "us") is operated by **[Your Name / Company Name]**, located at **[Your Address]**. If you have questions about this policy, contact us at **[privacy@yourdomain.com]**.
+To provide personalized insights and tracking capabilities, HungerCues collects the following types of information:
 
----
+### A. Baby Profile Data
+- **Name/Nickname**
+- **Date of Birth** (used to calculate age in months for age-appropriate AI development milestones)
+- **Gender**
 
-## 2. What Data We Collect
+### B. Child Activity Logs
+- **Feedings:** Times, durations, amounts (ml), types (breast, bottle, formula), breast side (left/right), and notes.
+- **Sleep Sessions:** Start/end times, durations, tracking methods, and notes.
+- **Diaper Changes:** Times, diaper state (wet, dirty, mixed), and notes.
+- **Growth Records:** Recorded date/time, weight (kg/lbs), height (cm/in), and notes.
+- **Milestones:** Achievement dates, descriptions, notes, and uploaded photos or videos (media attachments).
 
-We collect only the data necessary to provide the HungerCues service.
+### C. Account and Authentication Data
+- **Email Address & Password:** Managed securely via **Google Firebase Authentication**. We do not store your password on our servers.
+- **Authentication UID:** A unique identifier linked to your Firebase user record to isolate your family's data.
 
-### 2.1 Account Data
-| Data | Purpose | Basis |
-|------|---------|-------|
-| Email address | Account creation via Firebase Authentication | Contractual necessity |
-| Display name (optional) | Personalisation | Consent |
-
-### 2.2 Baby Profile Data
-| Data | Purpose | Retention |
-|------|---------|-----------|
-| Baby name | Display in app | Until account deletion |
-| Date of birth | Age-based recommendations | Until account deletion |
-| Gender (optional) | Context for AI insights | Until account deletion |
-
-### 2.3 Activity Logs
-| Data | Purpose | Retention |
-|------|---------|-----------|
-| Feeding records (time, type, duration, amount) | AI analysis + tracking | 90 days after deletion |
-| Sleep sessions (start, end, method) | AI analysis + tracking | 90 days after deletion |
-| Diaper changes (time, type) | Tracking | 90 days after deletion |
-| Growth records (weight, height) | Milestone tracking | 90 days after deletion |
-
-### 2.4 AI Interaction Data
-Queries you send to the AI assistant (powered by Google Gemini) are processed to generate responses. We do not use your queries to train AI models.
-
-### 2.5 Technical Data
-- Device type and OS version (for bug reports via Sentry)
-- Crash reports and error logs (anonymised, via Sentry)
-- API usage metrics (aggregated, no PII)
+### D. Technical and Observability Data
+- **Crash Logs and Diagnostics:** Collected via **Sentry** to help troubleshoot errors.
+- **API Request Headers:** Includes anonymous tracing identifiers (UUIDs) for performance monitoring.
 
 ---
 
-## 3. What We Do NOT Collect
-- Precise GPS location
-- Device contacts
-- Photos or camera data
-- Payment information
+## 2. How We Use the Information
+
+We use the collected data strictly for the following purposes:
+- **Childcare Tracking:** To display histories, summaries, and charts of your baby's patterns.
+- **AI-Powered Insights:** We transmit baby logs and profile details to the **Google Gemini API** to generate context-aware, personalized, and proactive parenting recommendations.
+- **Push Notifications:** To schedule reminders for feedings or diaper changes based on logs.
+- **App Support and Troubleshooting:** To analyze application crashes and improve performance.
 
 ---
 
-## 4. How We Use Your Data
+## 3. Data Processing and Third-Party Subprocessors
 
-We use collected data exclusively to:
-1. Provide, operate, and improve the HungerCues app
-2. Generate AI-powered insights and recommendations
-3. Send push notifications you have opted into (feeding/sleep reminders)
-4. Investigate and fix bugs and crashes
+HungerCues partners with trusted third-party services to deliver core features. We enforce the principle of data minimization and do not sell or lease any PII.
 
-We **do not** sell, rent, or trade your personal data to any third party.
-
----
-
-## 5. Third-Party Services
-
-| Service | Purpose | Privacy Policy |
-|---------|---------|---------------|
-| **Google Firebase** | Authentication | [firebase.google.com/support/privacy](https://firebase.google.com/support/privacy) |
-| **Google Gemini API** | AI recommendations | [ai.google.dev/terms](https://ai.google.dev/terms) |
-| **Cloudflare R2** | File storage | [cloudflare.com/privacypolicy](https://www.cloudflare.com/privacypolicy/) |
-| **Sentry** | Error monitoring | [sentry.io/privacy](https://sentry.io/privacy/) |
-
-All third-party processors are bound by data processing agreements requiring them to process data only on our instructions.
+| Partner | Purpose | Data Exchanged | Compliance / Standards |
+|---------|---------|----------------|------------------------|
+| **Google Firebase** | Account Authentication | Email, UID, session tokens | GDPR, SOC 2 |
+| **Google Gemini API** | AI-based insights & recommendations | Baby profile, age, activity logs (de-identified) | Enterprise data privacy rules |
+| **Cloudflare R2** | Media attachment storage | Milestone photos/videos | SOC 2, HIPAA-compliant storage |
+| **Sentry** | Error tracking and logging | Device info, stack traces (PII scrubbed) | ISO/IEC 27001, GDPR |
 
 ---
 
-## 6. Data Storage and Security
+## 4. Data Retention, Security, and Deletion Rights
 
-- **Location**: Data is stored on servers located in **[Region, e.g., EU / Germany (Hetzner)]**.
-- **Encryption**: Data is encrypted in transit (TLS 1.2+) and at rest.
-- **Backups**: Daily encrypted backups stored in Cloudflare R2, retained for 30 days.
-- **Access control**: Access is restricted to authorised personnel via Firebase Authentication and row-level security.
+### A. Data Security
+- All database connections and API transactions are encrypted in transit using **TLS (HTTPS)**.
+- Sensitive files and databases are encrypted at rest using industry-standard AES encryption keys.
+- Regular database backups are automatically compressed and securely uploaded to Cloudflare R2 storage.
 
----
-
-## 7. Children's Privacy
-
-HungerCues is designed for parents/caregivers to log data **about** their infant children. The app is not directed at children under 13, and we do not knowingly collect data from children under 13 as account holders. Baby profile data is entered by the parent/caregiver and is covered under the parent's account consent.
-
----
-
-## 8. Your Rights
-
-Depending on your jurisdiction, you may have the right to:
-
-| Right | How to Exercise |
-|-------|----------------|
-| **Access** your data | Email [privacy@yourdomain.com] |
-| **Correct** inaccurate data | Update in-app or email us |
-| **Delete** your account and data | In-app "Delete Account" or email us |
-| **Export** your data (portability) | Email [privacy@yourdomain.com] |
-| **Withdraw consent** for notifications | Disable in device settings |
-| **Lodge a complaint** | Contact your national data protection authority |
-
-We will respond to all requests within **30 days**.
+### B. User Control & Deletion Rights (Right to be Forgotten)
+- **Soft Deletion:** The App allows you to delete activities (feedings, sleeps, diaper changes, growth records). Deleted items are immediately removed from active dashboards and metrics.
+- **Restoration:** Soft-deleted items are stored in a trash folder for user convenience and can be restored or permanently purged.
+- **Permanent Account Deletion:** You can request the complete and permanent deletion of your account and all associated child data. This action is irreversible and purges all databases and R2 media files.
+- To request account deletion, please contact support at: `support@hungercues.com`.
 
 ---
 
-## 9. Data Retention
+## 5. Children's Privacy (COPPA Compliance)
 
-| Category | Retention |
-|----------|-----------|
-| Active account data | Until account deletion |
-| Soft-deleted activity logs | 90 days after soft-deletion, then purged |
-| Crash reports (Sentry) | 90 days |
-| Server access logs | 30 days |
-| Database backups | 30 days |
+HungerCues is designed as a tool for parents and adult guardians. We do not knowingly collect personal information directly from children under the age of 13. If you believe a child under 13 has directly created an account, please contact us immediately to purge the record.
 
 ---
 
-## 10. Push Notifications
+## 6. Updates to This Policy
 
-HungerCues sends push notifications for:
-- Feeding reminders (if baby hasn't fed in 90+ minutes)
-- Sleep cycle alerts
-- Custom reminders you set
-
-You can opt out at any time via your device notification settings.
+We may update this Privacy Policy from time to time to reflect changes in our services or legal obligations. We will notify you of any material changes by updating the "Last Updated" date at the top of this page.
 
 ---
 
-## 11. Changes to This Policy
+## 7. Contact Us
 
-We will notify you of material changes via in-app notification or email at least **14 days** before the change takes effect. Continued use after that date constitutes acceptance.
-
----
-
-## 12. Contact
-
-**[Your Name / Company Name]**  
-**[Address]**  
-**[privacy@yourdomain.com]**
-
-For EU/EEA residents: Our Data Protection Representative can be reached at the same contact above.
+If you have any questions or concerns regarding this Privacy Policy or your data, please reach out to us:
+- **Email:** `privacy@hungercues.com`
+- **Support Portal:** `https://support.hungercues.com`

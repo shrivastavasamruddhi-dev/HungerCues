@@ -12,12 +12,17 @@ from slowapi.util import get_remote_address
 
 from app.config import settings
 
-# Use the client's real IP as the rate limit key.
-# Behind Nginx, the real IP is forwarded via X-Forwarded-For.
+# Use Redis for rate limit state tracking in production to coordinate
+# limits across replicas and persist state across restarts.
+# Fall back to in-memory ("memory://") for local development and tests.
+storage_uri = settings.redis_url if settings.is_production else "memory://"
+
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=[f"{settings.rate_limit_per_minute}/minute"],
+    storage_uri=storage_uri,
 )
+
 
 rate_limit_exceeded_handler = _rate_limit_exceeded_handler
 

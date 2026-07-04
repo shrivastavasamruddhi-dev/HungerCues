@@ -8,6 +8,7 @@ from sqlalchemy.future import select
 from app.database import get_db
 from app.dependencies.auth import get_current_firebase_uid
 from app.models.diaper import DiaperChange
+from app.services.cache import invalidate_baby_cache
 
 router = APIRouter()
 
@@ -44,6 +45,7 @@ async def create_diaper_change(
     db.add(change)
     await db.commit()
     await db.refresh(change)
+    await invalidate_baby_cache(change.baby_id)
     return change
 
 
@@ -75,4 +77,6 @@ async def delete_diaper_change(
         raise HTTPException(status_code=404, detail="Diaper change record not found")
     change.deleted_at = datetime.utcnow()
     await db.commit()
+    await invalidate_baby_cache(change.baby_id)
     return {"status": "success"}
+

@@ -39,7 +39,7 @@ class TestProductionLogging:
 
     def test_configure_logging_production_sets_json_formatter(self, clean_logger):
         """Verify JSON formatter is configured in production."""
-        with patch("app.config.settings.is_production", True):
+        with patch("app.config.settings.environment", "production"):
             clean_logger.handlers.clear()
             clean_logger.setLevel(logging.NOTSET)
 
@@ -60,7 +60,7 @@ class TestProductionLogging:
 
     def test_configure_logging_production_sets_info_level(self, clean_logger):
         """Verify INFO log level is set in production."""
-        with patch("app.config.settings.is_production", True):
+        with patch("app.config.settings.environment", "production"):
             clean_logger.handlers.clear()
             clean_logger.setLevel(logging.NOTSET)
 
@@ -70,7 +70,7 @@ class TestProductionLogging:
 
     def test_configure_logging_production_silences_sqlalchemy(self, clean_logger):
         """Verify SQLAlchemy engine logging is silenced in production."""
-        with patch("app.config.settings.is_production", True):
+        with patch("app.config.settings.environment", "production"):
             clean_logger.handlers.clear()
 
             configure_logging()
@@ -80,7 +80,7 @@ class TestProductionLogging:
 
     def test_configure_logging_production_silences_uvicorn(self, clean_logger):
         """Verify Uvicorn access logging is silenced in production."""
-        with patch("app.config.settings.is_production", True):
+        with patch("app.config.settings.environment", "production"):
             clean_logger.handlers.clear()
 
             configure_logging()
@@ -90,7 +90,7 @@ class TestProductionLogging:
 
     def test_configure_logging_production_json_output_format(self, clean_logger):
         """Verify JSON output is properly formatted in production."""
-        with patch("app.config.settings.is_production", True):
+        with patch("app.config.settings.environment", "production"):
             clean_logger.handlers.clear()
             clean_logger.setLevel(logging.NOTSET)
 
@@ -126,7 +126,7 @@ class TestDevelopmentLogging:
 
     def test_configure_logging_development_sets_debug_level(self, clean_logger):
         """Verify DEBUG log level is set in development."""
-        with patch("app.config.settings.is_production", False):
+        with patch("app.config.settings.environment", "development"):
             clean_logger.handlers.clear()
             clean_logger.setLevel(logging.NOTSET)
 
@@ -136,7 +136,7 @@ class TestDevelopmentLogging:
 
     def test_configure_logging_development_silences_sqlalchemy(self, clean_logger):
         """Verify SQLAlchemy engine logging is silenced in development."""
-        with patch("app.config.settings.is_production", False):
+        with patch("app.config.settings.environment", "development"):
             clean_logger.handlers.clear()
 
             configure_logging()
@@ -146,7 +146,7 @@ class TestDevelopmentLogging:
 
     def test_configure_logging_development_uses_standard_format(self, clean_logger):
         """Verify standard (non-JSON) format is used in development."""
-        with patch("app.config.settings.is_production", False):
+        with patch("app.config.settings.environment", "development"):
             clean_logger.handlers.clear()
             clean_logger.setLevel(logging.NOTSET)
 
@@ -165,7 +165,7 @@ class TestDevelopmentLogging:
 
     def test_configure_logging_development_creates_handler(self, clean_logger):
         """Verify handler is properly configured in development mode."""
-        with patch("app.config.settings.is_production", False):
+        with patch("app.config.settings.environment", "development"):
             clean_logger.handlers.clear()
             clean_logger.setLevel(logging.NOTSET)
 
@@ -180,7 +180,7 @@ class TestLoggingEdgeCases:
 
     def test_configure_logging_called_multiple_times_production(self, clean_logger):
         """Verify calling configure_logging multiple times doesn't duplicate handlers."""
-        with patch("app.config.settings.is_production", True):
+        with patch("app.config.settings.environment", "production"):
             clean_logger.handlers.clear()
 
             configure_logging()
@@ -194,7 +194,7 @@ class TestLoggingEdgeCases:
 
     def test_configure_logging_json_formatter_exists(self, clean_logger):
         """Verify JSON formatter is actually instantiated in production."""
-        with patch("app.config.settings.is_production", True):
+        with patch("app.config.settings.environment", "production"):
             clean_logger.handlers.clear()
             clean_logger.setLevel(logging.NOTSET)
 
@@ -208,14 +208,14 @@ class TestLoggingEdgeCases:
     def test_configure_logging_environment_setting_respected(self, clean_logger):
         """Verify environment setting actually switches between production/dev."""
         # Test production
-        with patch("app.config.settings.is_production", True):
+        with patch("app.config.settings.environment", "production"):
             clean_logger.handlers.clear()
             clean_logger.setLevel(logging.NOTSET)
             configure_logging()
             production_level = clean_logger.level
 
         # Test development
-        with patch("app.config.settings.is_production", False):
+        with patch("app.config.settings.environment", "development"):
             clean_logger.handlers.clear()
             clean_logger.setLevel(logging.NOTSET)
             configure_logging()

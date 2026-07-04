@@ -63,6 +63,7 @@ export default function App() {
   const [notes, setNotes] = useState('');
   const [breastSide, setBreastSide] = useState<'Left' | 'Right'>('Left');
   const [baby, setBaby] = useState<Baby | null>(null);
+  const [allBabies, setAllBabies] = useState<Baby[]>([]);
   const [feedings, setFeedings] = useState<Feeding[]>([]);
   const [sleep, setSleep] = useState<SleepSession[]>([]);
   const [diapers, setDiapers] = useState<DiaperChange[]>([]);
@@ -92,7 +93,7 @@ export default function App() {
     setError(null);
     try {
       const babies = await api.listBabies();
-      const activeBaby = babies[0];
+      const activeBaby = baby ? (babies.find(b => b.id === baby.id) || babies[0]) : babies[0];
       if (!activeBaby) throw new Error('No baby profile was found.');
       const [feedingData, sleepData, diaperData, growthData] = await Promise.all([
         api.listFeedings(activeBaby.id),
@@ -101,6 +102,7 @@ export default function App() {
         api.listGrowth(activeBaby.id),
       ]);
       setBaby(activeBaby);
+      setAllBabies(babies);
       setFeedings(feedingData);
       setSleep(sleepData);
       setDiapers(diaperData);
@@ -109,6 +111,34 @@ export default function App() {
       setError('Cannot reach the tracker service. Start the backend and pull to retry.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectBaby = async (selectedBaby: Baby) => {
+    setBaby(selectedBaby);
+    setLoading(true);
+    setError(null);
+    try {
+      const [feedingData, sleepData, diaperData, growthData] = await Promise.all([
+        api.listFeedings(selectedBaby.id),
+        api.listSleep(selectedBaby.id),
+        api.listDiapers(selectedBaby.id),
+        api.listGrowth(selectedBaby.id),
+      ]);
+      setFeedings(feedingData);
+      setSleep(sleepData);
+      setDiapers(diaperData);
+      setGrowth(growthData);
+    } catch {
+      setError(`Cannot load data for ${selectedBaby.name}. Check connection and try again.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    if (Platform.OS === 'web') {
+      window.location.reload();
     }
   };
 
@@ -490,11 +520,13 @@ export default function App() {
                 {tab === 'home' && (
                   <HomeScreen
                     baby={baby}
+                    allBabies={allBabies}
+                    onSelectBaby={handleSelectBaby}
+                    onSignOut={handleSignOut}
                     events={visibleEvents}
                     feedings={feedings}
                     diapers={diapers}
-                    filter={filter}
-                    setFilter={setFilter}
+                    sleep={sleep}
                     onQuickLog={(kind) => {
                       setActivity(kind);
                       setTab('log');
@@ -504,6 +536,7 @@ export default function App() {
                     formatElapsed={formatElapsed}
                     notifications={notifications}
                     onPressNotifications={() => setShowNotifications(true)}
+                    onRefreshData={() => loadData(false)}
                   />
                 )}
                 {tab === 'log' && (

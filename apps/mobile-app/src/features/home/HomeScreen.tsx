@@ -1,12 +1,20 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { C } from '../../constants/colors';
 import { Header } from '../../components/Header';
-import { SegmentedControl } from '../../components/SegmentedControl';
+import { BabyProfileCard } from '../../components/BabyProfileCard';
+import { SidebarPanel } from '../../components/SidebarPanel';
+import { FeedCard } from './components/FeedCard';
+import { SleepCard } from './components/SleepCard';
+import { DiaperCard } from './components/DiaperCard';
+import { QuickLogModal } from '../../components/QuickLogModal';
+import { useHomeData } from '../../hooks/useHomeData';
+
 import type {
   Baby,
   Feeding,
   DiaperChange,
+  SleepSession,
   TimelineEvent,
   Activity,
   NotificationEntry,
@@ -14,196 +22,166 @@ import type {
 
 interface Props {
   baby: Baby | null;
+  allBabies: Baby[];
+  onSelectBaby: (baby: Baby) => void;
+  onSignOut: () => void;
   events: TimelineEvent[];
   feedings: Feeding[];
   diapers: DiaperChange[];
-  filter: 'all' | Activity;
-  setFilter: (value: 'all' | Activity) => void;
+  sleep: SleepSession[];
   onQuickLog: (kind: Activity) => void;
   activeSleepStart: string | null;
   elapsedSeconds: number;
   formatElapsed: (secs: number) => string;
   notifications: NotificationEntry[];
   onPressNotifications: () => void;
+  onRefreshData: () => Promise<void>;
 }
 
 export function HomeScreen({
   baby,
+  allBabies,
+  onSelectBaby,
+  onSignOut,
   events,
   feedings,
   diapers,
-  filter,
-  setFilter,
-  onQuickLog,
+  sleep,
   activeSleepStart,
   elapsedSeconds,
   formatElapsed,
   notifications,
   onPressNotifications,
+  onRefreshData,
 }: Props) {
-  const latestBottle = feedings.find((item) => item.quantity_ml);
-  const today = new Date().toDateString();
-  const todayDiapers = diapers.filter(
-    (item) => new Date(item.changed_at).toDateString() === today,
-  ).length;
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [quickLogVisible, setQuickLogVisible] = useState(false);
+  const [quickLogActivity, setQuickLogActivity] = useState<Activity>('feed');
+
+  // Compute stats for all graphs
+  const {
+    DAY_LABELS,
+    feedChartData,
+    feedMax,
+    todaySleepSessions,
+    sleepChartData,
+    sleepMax,
+    diaperTodayData,
+    counts,
+    timeToPercent,
+    formatDuration,
+    formatTime12,
+  } = useHomeData({ feedings, sleepSessions: sleep, diapers, events });
+
+  const handleOpenQuickLog = (activityType: Activity) => {
+    setQuickLogActivity(activityType);
+    setQuickLogVisible(true);
+  };
+
+  const handleSaved = () => {
+    void onRefreshData();
+  };
 
   const unreadCount = notifications.length;
 
   return (
-    <View>
+    <View style={styles.container}>
+      {/* Header */}
       <Header
-        title={baby ? `${baby.name}'s day` : 'BabyTracker'}
+        title="HungerCues"
         onPress={onPressNotifications}
         action={
-          <View style={{ position: 'relative' }}>
-            <Text style={styles.headerActionText}>🔔</Text>
+          <View style={styles.bellContainer}>
+            <Text style={styles.bellEmoji}>🔔</Text>
             {unreadCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
               </View>
             )}
           </View>
         }
       />
-      <View style={styles.connectionRow}>
-        <View style={styles.onlineDot} />
-        <Text style={styles.connectionText}>Live data · SQLite connected</Text>
-      </View>
-      {activeSleepStart && (
-        <TouchableOpacity style={styles.activeTimerBanner} onPress={() => onQuickLog('sleep')}>
-          <View style={styles.timerDot} />
-          <Text style={styles.activeTimerText}>
-            Baby is sleeping: {formatElapsed(elapsedSeconds)}
-          </Text>
-        </TouchableOpacity>
-      )}
-      <SegmentedControl active={filter} onChange={setFilter} />
-      <Text style={styles.heroTitle}>
-        {events.length
-          ? `${events.length} moments logged.\nEvery one matters.`
-          : 'Your Every Step\nIn Parenting\nMatters'}
-      </Text>
-      <View style={styles.heroVisual}>
-        <View style={styles.motherHalo} />
-        <Text style={styles.familyEmoji}>👩‍🍼</Text>
-        <TouchableOpacity style={styles.feedTile} onPress={() => onQuickLog('feed')}>
-          <View style={styles.tileTopRow}>
-            <Text style={styles.tileValue}>{latestBottle?.quantity_ml ?? 120}ml</Text>
-            <View style={styles.roundWhite}>
-              <Text>♙</Text>
-            </View>
-          </View>
-          <Text style={styles.tileLabel}>
-            {latestBottle ? 'Latest bottle' : 'Log first bottle'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.diaperTile} onPress={() => onQuickLog('diaper')}>
-          <Text style={styles.diaperValue}>{todayDiapers}</Text>
-          <Text style={styles.diaperLabel}>Diapers today</Text>
-        </TouchableOpacity>
-      </View>
+
+      {/* Baby Profile Card */}
+      <BabyProfileCard
+        baby={baby}
+        onOpenSidebar={() => setSidebarVisible(true)}
+      />
+
+      {/* Analytics Cards */}
+      <FeedCard
+        feedChartData={feedChartData}
+        feedMax={feedMax}
+        DAY_LABELS={DAY_LABELS}
+        todayCount={counts.feed}
+        onQuickLog={() => handleOpenQuickLog('feed')}
+      />
+
+      <SleepCard
+        todaySleepSessions={todaySleepSessions}
+        sleepChartData={sleepChartData}
+        sleepMax={sleepMax}
+        DAY_LABELS={DAY_LABELS}
+        timeToPercent={timeToPercent}
+        formatDuration={formatDuration}
+        formatTime12={formatTime12}
+        onQuickLog={() => handleOpenQuickLog('sleep')}
+      />
+
+      <DiaperCard
+        diaperTodayData={diaperTodayData}
+        formatTime12={formatTime12}
+        onQuickLog={() => handleOpenQuickLog('diaper')}
+      />
+
+      {/* Sidebar Navigation */}
+      <SidebarPanel
+        visible={sidebarVisible}
+        onClose={() => setSidebarVisible(false)}
+        baby={baby}
+        allBabies={allBabies}
+        onSelectBaby={onSelectBaby}
+        onSignOut={onSignOut}
+      />
+
+      {/* Inline Quick Logging Bottom Sheet Modal */}
+      <QuickLogModal
+        visible={quickLogVisible}
+        activity={quickLogActivity}
+        baby={baby}
+        onClose={() => setQuickLogVisible(false)}
+        onSaved={handleSaved}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerActionText: { fontSize: 22 },
-  notificationBadge: {
+  container: {
+    flex: 1,
+  },
+  bellContainer: {
+    position: 'relative',
+  },
+  bellEmoji: {
+    fontSize: 22,
+  },
+  badge: {
     position: 'absolute',
     right: -4,
     top: -4,
-    backgroundColor: '#E53E3E',
+    backgroundColor: '#EF4444',
     borderRadius: 8,
     width: 16,
     height: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: C.purple,
+    borderColor: '#FFF',
   },
-  notificationBadgeText: { color: '#FFF', fontSize: 9, fontWeight: 'bold' },
-  connectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 12,
+  badgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E', marginRight: 6 },
-  connectionText: { fontSize: 11, color: C.muted },
-  activeTimerBanner: {
-    marginHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: C.purpleSoft,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: C.purple,
-    marginRight: 8,
-  },
-  activeTimerText: { color: C.purpleDark, fontWeight: '700', fontSize: 13 },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: C.ink,
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    lineHeight: 34,
-  },
-  heroVisual: {
-    marginHorizontal: 20,
-    height: 220,
-    borderRadius: 28,
-    backgroundColor: C.purple,
-    overflow: 'hidden',
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  motherHalo: {
-    position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  familyEmoji: { fontSize: 70 },
-  feedTile: {
-    position: 'absolute',
-    bottom: 14,
-    left: 14,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 16,
-    padding: 12,
-    width: 140,
-  },
-  tileTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tileValue: { color: '#FFF', fontWeight: '800', fontSize: 20 },
-  roundWhite: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 4 },
-  diaperTile: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
-  },
-  diaperValue: { color: '#FFF', fontWeight: '800', fontSize: 28 },
-  diaperLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 10 },
 });

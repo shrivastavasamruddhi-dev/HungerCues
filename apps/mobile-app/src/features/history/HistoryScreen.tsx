@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/colors';
-import { SectionTitle } from '../../components/SectionTitle';
 import { useHistoryData } from '../../hooks/useHistoryData';
 import { useDeleteActivities } from '../../hooks/useDeleteActivities';
-import { FeedGraph } from './components/FeedGraph';
-import { SleepGraph } from './components/SleepGraph';
-import { DiaperSummary } from './components/DiaperSummary';
 import { RecentActivityList } from './components/RecentActivityList';
 import { HistoryModal } from './components/HistoryModal';
 import type { TimelineEvent, Feeding, SleepSession, DiaperChange } from '../../types';
@@ -28,22 +24,10 @@ export function HistoryScreen({
   onRefreshData,
   onBack,
 }: Props) {
-  const [activeGraph, setActiveGraph] = useState<'feed' | 'sleep' | 'diaper'>('feed');
   const [historyModalVisible, setHistoryModalVisible] = useState<boolean>(false);
 
   const {
     recent,
-    DAY_LABELS,
-    feedChartData,
-    feedMax,
-    todaySleepSessions,
-    sleepChartData,
-    sleepMax,
-    diaperTodayData,
-    counts,
-    timeToPercent,
-    formatDuration,
-    formatTime12,
   } = useHistoryData({ feedings, sleepSessions, diapers, events });
 
   const { selectedIds, setSelectedIds, handleLongPress, handlePress, handleDeleteSelected } =
@@ -55,8 +39,8 @@ export function HistoryScreen({
   }, []);
 
   return (
-    <View>
-      {/* ── Header ── */}
+    <View style={styles.container}>
+      {/* Header */}
       {selectedIds.length > 0 ? (
         <View style={[styles.header, { backgroundColor: C.purpleSoft, paddingRight: 10 }]}>
           <TouchableOpacity
@@ -85,78 +69,13 @@ export function HistoryScreen({
         </View>
       )}
 
-      {/* ── Stat Chip Buttons ── */}
-      <SectionTitle>Today's Summary</SectionTitle>
-      <View style={styles.chips}>
-        {(
-          [
-            {
-              key: 'feed',
-              label: `${counts.feed} feed${counts.feed !== 1 ? 's' : ''}`,
-              icon: '🍼',
-            },
-            {
-              key: 'sleep',
-              label: `${counts.sleep} sleep session${counts.sleep !== 1 ? 's' : ''}`,
-              icon: '😴',
-            },
-            {
-              key: 'diaper',
-              label: `${counts.diaper} diaper${counts.diaper !== 1 ? 's' : ''}`,
-              icon: '🧷',
-            },
-          ] as { key: 'feed' | 'sleep' | 'diaper'; label: string; icon: string }[]
-        ).map((chip) => (
-          <TouchableOpacity
-            key={chip.key}
-            onPress={() => setActiveGraph(chip.key)}
-            style={[
-              styles.chip,
-              activeGraph === chip.key && {
-                backgroundColor: C.purple,
-                shadowColor: C.purple,
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 4,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                activeGraph === chip.key && { color: '#FFF', fontWeight: '700' },
-              ]}
-            >
-              {chip.icon} {chip.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* Recent Activity Card */}
+      <RecentActivityList
+        recent={recent}
+        onPress={() => setHistoryModalVisible(true)}
+      />
 
-      {/* ── Graph / Summary Component ── */}
-      {activeGraph === 'feed' && (
-        <FeedGraph feedChartData={feedChartData} feedMax={feedMax} DAY_LABELS={DAY_LABELS} />
-      )}
-
-      {activeGraph === 'sleep' && (
-        <SleepGraph
-          todaySleepSessions={todaySleepSessions}
-          sleepChartData={sleepChartData}
-          sleepMax={sleepMax}
-          DAY_LABELS={DAY_LABELS}
-          timeToPercent={timeToPercent}
-          formatDuration={formatDuration}
-          formatTime12={formatTime12}
-        />
-      )}
-
-      {activeGraph === 'diaper' && (
-        <DiaperSummary diaperTodayData={diaperTodayData} formatTime12={formatTime12} />
-      )}
-
-      {/* ── Recent Activity ── */}
-      <RecentActivityList recent={recent} onPress={() => setHistoryModalVisible(true)} />
-
+      {/* Full History Filter Modal */}
       <HistoryModal
         visible={historyModalVisible}
         onClose={() => {
@@ -176,6 +95,9 @@ export function HistoryScreen({
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   header: {
     height: 54,
     backgroundColor: C.card,
@@ -185,7 +107,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 26,
+    marginBottom: 20,
   },
   headerTitle: { color: C.ink, fontSize: 16, fontWeight: '600' },
   headerAction: {
@@ -202,13 +124,4 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    justifyContent: 'center',
-    marginBottom: 18,
-  },
-  chip: { backgroundColor: C.card, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 18 },
-  chipText: { fontSize: 11, color: C.ink },
 });

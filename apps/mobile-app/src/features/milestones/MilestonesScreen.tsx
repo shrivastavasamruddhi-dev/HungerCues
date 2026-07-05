@@ -58,6 +58,7 @@ export function MilestonesScreen({ baby }: Props) {
       )}
 
       <CDCChecklist
+        baby={baby}
         milestones={milestones}
         defaultCDC={defaultCDC}
         activeMilestoneName={activeMilestoneName}

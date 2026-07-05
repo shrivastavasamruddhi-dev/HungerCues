@@ -24,7 +24,7 @@ interface Props {
   activity: Activity;
   baby: Baby | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (kind: 'feed' | 'sleep' | 'diaper', id: number) => void;
 }
 
 export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Props) {
@@ -89,15 +89,19 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
           }
           startTime = customDate;
         }
-        await api.createFeeding({
+
+        const isSolid = subtype === 'Solid';
+        const res = await api.createFeeding({
           baby_id: baby.id,
           type: subtype.toLowerCase(),
           start_time: startTime.toISOString(),
-          duration_minutes: Number(duration) || 15,
-          quantity_ml: subtype === 'Bottle' ? Number(amount) || 120 : null,
+          duration_minutes: isSolid ? 0 : (Number(duration) || 15),
+          quantity_ml: isSolid ? (Number(amount) || 1) : (subtype === 'Bottle' ? Number(amount) || 120 : null),
           breast_side: subtype === 'Breast' ? breastSide : null,
           notes: notes || null,
         });
+
+        onSaved('feed', res.id);
       } else if (activity === 'sleep') {
         const isNightSleep = subtype === 'Night';
         const minutes = parseDurationHHMM(duration);
@@ -117,7 +121,7 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
           startTime = customDate;
         }
         const endTime = new Date(startTime.getTime() + minutes * 60_000);
-        await api.createSleep({
+        const res = await api.createSleep({
           baby_id: baby.id,
           sleep_start: startTime.toISOString(),
           sleep_end: endTime.toISOString(),
@@ -125,6 +129,8 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
           tracking_method: isNightSleep ? 'night' : 'manual',
           notes: notes || null,
         });
+
+        onSaved('sleep', res.id);
       } else if (activity === 'diaper') {
         let changeTime = now;
         if (customTimeEnabled) {
@@ -136,15 +142,16 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
           }
           changeTime = customDate;
         }
-        await api.createDiaper({
+        const res = await api.createDiaper({
           baby_id: baby.id,
           changed_at: changeTime.toISOString(),
           type: subtype.toLowerCase(),
           notes: notes || null,
         });
+
+        onSaved('diaper', res.id);
       }
 
-      onSaved();
       onClose();
     } catch {
       setError('Cannot save entry. Please check the backend connection and try again.');

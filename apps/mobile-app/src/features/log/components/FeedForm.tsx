@@ -1,11 +1,11 @@
 import React from 'react';
 import {
-  View,
+  ActivityIndicator,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
+  View,
 } from 'react-native';
 import { C } from '../../../constants/colors';
 import { CustomTimeSelector } from './CustomTimeSelector';
@@ -45,10 +45,15 @@ export function FeedForm({
   customTime,
   setCustomTime,
 }: Props) {
+  const isBottle = subtype === 'Bottle';
+  const isBreast = subtype === 'Breast';
+  const isSolid  = subtype === 'Solid';
+
   return (
     <View>
       <View style={styles.formRow}>
-        {subtype === 'Bottle' && (
+        {/* ── Bottle: Amount (ml) ── */}
+        {isBottle && (
           <View style={styles.formField}>
             <Text style={styles.inputLabel}>Amount (ml)</Text>
             <TextInput
@@ -60,29 +65,23 @@ export function FeedForm({
             />
           </View>
         )}
-        {subtype === 'Breast' && (
+
+        {/* ── Breast: Side selector ── */}
+        {isBreast && (
           <View style={styles.formField}>
             <Text style={styles.inputLabel}>Breast Side</Text>
-            <View style={{ flexDirection: 'row', gap: 6, height: 42 }}>
-              {['Left', 'Right'].map((side) => (
+            <View style={styles.sideRow}>
+              {(['Left', 'Right'] as const).map((side) => (
                 <TouchableOpacity
                   key={side}
-                  onPress={() => setBreastSide(side as 'Left' | 'Right')}
-                  style={{
-                    flex: 1,
-                    backgroundColor: breastSide === side ? C.purple : '#EDEDEE',
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  accessibilityLabel={`${side} breast`}
+                  onPress={() => setBreastSide(side)}
+                  style={[
+                    styles.sideBtn,
+                    breastSide === side && styles.sideBtnActive,
+                  ]}
                 >
-                  <Text
-                    style={{
-                      color: breastSide === side ? '#FFF' : C.muted,
-                      fontSize: 13,
-                      fontWeight: '700',
-                    }}
-                  >
+                  <Text style={[styles.sideBtnText, breastSide === side && styles.sideBtnTextActive]}>
                     {side}
                   </Text>
                 </TouchableOpacity>
@@ -90,16 +89,36 @@ export function FeedForm({
             </View>
           </View>
         )}
-        <View style={styles.formField}>
-          <Text style={styles.inputLabel}>Duration (min)</Text>
-          <TextInput
-            accessibilityLabel="Duration in minutes"
-            value={duration}
-            onChangeText={setDuration}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-        </View>
+
+        {/* ── Solid: Servings (not ml, not minutes) ── */}
+        {isSolid && (
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Portions / Servings</Text>
+            <TextInput
+              accessibilityLabel="Number of servings"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+              placeholder="1"
+              placeholderTextColor="#A9A9A9"
+              style={styles.input}
+            />
+          </View>
+        )}
+
+        {/* ── Duration (min) — only for Breast & Bottle, NOT Solid ── */}
+        {!isSolid && (
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Duration (min)</Text>
+            <TextInput
+              accessibilityLabel="Duration in minutes"
+              value={duration}
+              onChangeText={setDuration}
+              keyboardType="numeric"
+              style={styles.input}
+            />
+          </View>
+        )}
       </View>
 
       <CustomTimeSelector
@@ -118,6 +137,7 @@ export function FeedForm({
         placeholderTextColor="#A9A9A9"
         style={[styles.input, styles.notesInput]}
       />
+
       <TouchableOpacity
         disabled={saving}
         style={[styles.logButton, saving && styles.buttonDisabled]}
@@ -147,14 +167,30 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   notesInput: { width: '100%' },
+  sideRow: { flexDirection: 'row', gap: 6, height: 46, marginBottom: 12 },
+  sideBtn: {
+    flex: 1,
+    borderRadius: 14,
+    backgroundColor: '#F4F4F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sideBtnActive: { backgroundColor: C.purple },
+  sideBtnText: { fontSize: 13, fontWeight: '700', color: C.muted },
+  sideBtnTextActive: { color: '#FFF' },
   logButton: {
-    height: 48,
-    borderRadius: 24,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: C.purple,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
+    shadowColor: C.purple,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  logButtonText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
+  logButtonText: { color: '#FFF', fontWeight: '800', fontSize: 15, letterSpacing: 0.3 },
   buttonDisabled: { opacity: 0.55 },
 });

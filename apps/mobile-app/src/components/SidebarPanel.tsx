@@ -18,6 +18,7 @@ interface Props {
   allBabies: Baby[];
   onSelectBaby: (baby: Baby) => void;
   onSignOut: () => void;
+  onAddBaby: () => void;
 }
 
 export function SidebarPanel({
@@ -27,6 +28,7 @@ export function SidebarPanel({
   allBabies,
   onSelectBaby,
   onSignOut,
+  onAddBaby,
 }: Props) {
   const getBabyAvatar = (gender: string) => {
     const g = gender.toLowerCase();
@@ -107,6 +109,19 @@ export function SidebarPanel({
                   );
                 })
               )}
+
+              {/* Add Baby Button */}
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Add new baby profile"
+                onPress={() => {
+                  onClose();
+                  onAddBaby();
+                }}
+                style={styles.addBabyBtn}
+              >
+                <Text style={styles.addBabyText}>＋ Add Baby Profile</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
 
@@ -260,6 +275,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: C.muted,
     fontStyle: 'italic',
+  },
+  addBabyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: C.purple,
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    marginTop: 12,
+    backgroundColor: '#FFF',
+  },
+  addBabyText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: C.purpleDark,
   },
   footer: {
     padding: 20,

@@ -42,13 +42,15 @@ import { BottomNav } from './src/components/BottomNav';
 import { SwipeableNotification } from './src/components/SwipeableNotification';
 import { DeletedActivitiesModal } from './src/components/DeletedActivitiesModal';
 import { HomeScreen } from './src/features/home/HomeScreen';
-import { LogScreen } from './src/features/log/LogScreen';
 import { GrowthScreen } from './src/features/growth/GrowthScreen';
 import { HistoryScreen } from './src/features/history/HistoryScreen';
 import { InsightsScreen } from './src/features/insights/InsightsScreen';
 import { MilestonesScreen } from './src/features/milestones/MilestonesScreen';
 import { SectionTitle } from './src/components/SectionTitle';
 import { EmptyState } from './src/components/EmptyState';
+import { AddBabyModal } from './src/components/AddBabyModal';
+import { NotificationsModal } from './src/components/NotificationsModal';
+import { Toast } from './src/components/Toast';
 
 export default function App() {
   const { width } = useWindowDimensions();
@@ -86,6 +88,10 @@ export default function App() {
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
   const [showLogMenu, setShowLogMenu] = useState(false);
   const [showDeletedModal, setShowDeletedModal] = useState(false);
+  const [addBabyModalVisible, setAddBabyModalVisible] = useState(false);
+  const [lastLoggedEvent, setLastLoggedEvent] = useState<{ kind: 'feed' | 'sleep' | 'diaper'; id: number } | null>(null);
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const compact = width < 430;
 
   const loadData = async (showSpinner = true) => {
@@ -142,6 +148,24 @@ export default function App() {
     }
   };
 
+  const handleUndo = async () => {
+    if (!lastLoggedEvent) return;
+    try {
+      if (lastLoggedEvent.kind === 'feed') {
+        await api.deleteFeeding(lastLoggedEvent.id);
+      } else if (lastLoggedEvent.kind === 'sleep') {
+        await api.deleteSleep(lastLoggedEvent.id);
+      } else if (lastLoggedEvent.kind === 'diaper') {
+        await api.deleteDiaper(lastLoggedEvent.id);
+      }
+      setLastLoggedEvent(null);
+      setNotice('Last activity deleted and undone successfully.');
+      void loadData(false);
+    } catch {
+      setError('Could not undo the last logged activity.');
+    }
+  };
+
   useEffect(() => {
     void loadData();
   }, []);
@@ -189,7 +213,9 @@ export default function App() {
       icon: activityMeta.feed.icon,
       title: `${capitalize(item.type)} Feed`,
       occurredAt: item.start_time,
-      note: `${item.breast_side ? `Side: ${item.breast_side} Â· ` : ''}${item.quantity_ml ? `${item.quantity_ml} ml Â· ` : ''}${item.duration_minutes} min${item.notes ? ` Â· ${item.notes}` : ''}`,
+      note: item.type.toLowerCase() === 'solid'
+        ? `${item.quantity_ml ? `${item.quantity_ml} serving${item.quantity_ml !== 1 ? 's' : ''}` : ''}${item.notes ? ` · ${item.notes}` : ''}`
+        : `${item.breast_side ? `Side: ${item.breast_side} · ` : ''}${item.quantity_ml ? `${item.quantity_ml} ml · ` : ''}${item.duration_minutes} min${item.notes ? ` · ${item.notes}` : ''}`,
     }));
     const sleepEvents = sleep.map((item) => ({
       id: `sleep-${item.id}`,
@@ -197,7 +223,7 @@ export default function App() {
       icon: activityMeta.sleep.icon,
       title: item.tracking_method === 'night' ? 'Night Sleep' : 'Sleep Session',
       occurredAt: item.sleep_start,
-      note: `${item.duration_minutes ?? 0} min${item.notes ? ` Â· ${item.notes}` : ''}`,
+      note: `${item.duration_minutes ?? 0} min${item.notes ? ` · ${item.notes}` : ''}`,
     }));
     const diaperEvents = diapers.map((item) => ({
       id: `diaper-${item.id}`,
@@ -218,7 +244,7 @@ export default function App() {
         }
       }
       if (item.height_cm) {
-        if (detailStr) detailStr += ' Â· ';
+        if (detailStr) detailStr += ' · ';
         if (unitSystem === 'metric') {
           detailStr += `Height: ${item.height_cm} cm`;
         } else {
@@ -227,7 +253,7 @@ export default function App() {
         }
       }
       if (item.notes) {
-        if (detailStr) detailStr += ' Â· ';
+        if (detailStr) detailStr += ' · ';
         detailStr += item.notes;
       }
       return {
@@ -245,140 +271,6 @@ export default function App() {
   }, [feedings, sleep, diapers, growth, unitSystem]);
 
   const visibleEvents = filter === 'all' ? events : events.filter((event) => event.kind === filter);
-
-  const logActivity = async () => {
-    if (!baby || saving) return;
-    setSaving(true);
-    setError(null);
-    const now = new Date();
-    try {
-      if (activity === 'feed') {
-        let startTime = now;
-        if (customTimeEnabled) {
-          const customDate = getCustomDateTime(customTime);
-          if (!customDate) {
-            setError('Please enter a valid time in HH:MM format (e.g. 14:30)');
-            setSaving(false);
-            return;
-          }
-          startTime = customDate;
-        }
-        await api.createFeeding({
-          baby_id: baby.id,
-          type: subtype.toLowerCase(),
-          start_time: startTime.toISOString(),
-          duration_minutes: Number(duration) || 15,
-          quantity_ml: subtype === 'Bottle' ? Number(amount) || 120 : null,
-          breast_side: subtype === 'Breast' ? breastSide : null,
-          notes: notes || null,
-        });
-      } else if (activity === 'sleep') {
-        // Determine tracking_method: 'night' if user chose Night type, otherwise mode-based
-        const isNightSleep = subtype === 'Night';
-        if (sleepTrackingMode === 'timer') {
-          if (!activeSleepStart) return;
-          const start = new Date(activeSleepStart);
-          const minutes = Math.max(1, Math.round((now.getTime() - start.getTime()) / 60_000));
-          await api.createSleep({
-            baby_id: baby.id,
-            sleep_start: activeSleepStart,
-            sleep_end: now.toISOString(),
-            duration_minutes: minutes,
-            tracking_method: isNightSleep ? 'night' : 'timer',
-            notes: notes || null,
-          });
-          setActiveSleepStart(null);
-        } else {
-          const minutes = parseDurationHHMM(duration);
-          if (minutes === null) {
-            setError('Please enter sleep duration in HH:MM format (e.g. 01:30)');
-            setSaving(false);
-            return;
-          }
-          let startTime = new Date(now.getTime() - minutes * 60_000);
-          if (customTimeEnabled) {
-            const customDate = getCustomDateTime(customTime);
-            if (!customDate) {
-              setError('Please enter a valid time in HH:MM format (e.g. 14:30)');
-              setSaving(false);
-              return;
-            }
-            startTime = customDate;
-          }
-          const endTime = new Date(startTime.getTime() + minutes * 60_000);
-          await api.createSleep({
-            baby_id: baby.id,
-            sleep_start: startTime.toISOString(),
-            sleep_end: endTime.toISOString(),
-            duration_minutes: minutes,
-            tracking_method: isNightSleep ? 'night' : 'manual',
-            notes: notes || null,
-          });
-        }
-      } else if (activity === 'diaper') {
-        let changeTime = now;
-        if (customTimeEnabled) {
-          const customDate = getCustomDateTime(customTime);
-          if (!customDate) {
-            setError('Please enter a valid time in HH:MM format (e.g. 14:30)');
-            setSaving(false);
-            return;
-          }
-          changeTime = customDate;
-        }
-        await api.createDiaper({
-          baby_id: baby.id,
-          changed_at: changeTime.toISOString(),
-          type: subtype.toLowerCase(),
-          notes: notes || null,
-        });
-      } else if (activity === 'growth') {
-        let w_kg: number | null = null;
-        let h_cm: number | null = null;
-        if (weightInput.trim()) {
-          const w_val = Number(weightInput);
-          w_kg = unitSystem === 'metric' ? w_val : w_val / 2.20462;
-        }
-        if (heightInput.trim()) {
-          const h_val = Number(heightInput);
-          h_cm = unitSystem === 'metric' ? h_val : h_val * 2.54;
-        }
-        if (w_kg === null && h_cm === null) {
-          setError('Please enter at least one metric (weight or height).');
-          setSaving(false);
-          return;
-        }
-        let growthTime = now;
-        if (customTimeEnabled) {
-          const customDate = getCustomDateTime(customTime);
-          if (!customDate) {
-            setError('Please enter a valid time in HH:MM format (e.g. 14:30)');
-            setSaving(false);
-            return;
-          }
-          growthTime = customDate;
-        }
-        await api.createGrowth({
-          baby_id: baby.id,
-          recorded_at: growthTime.toISOString(),
-          weight_kg: w_kg,
-          height_cm: h_cm,
-          notes: notes || null,
-        });
-        setWeightInput('');
-        setHeightInput('');
-      }
-      await loadData(false);
-      setNotice(`${activityMeta[activity].label} saved to the database`);
-      setTimeout(() => setNotice(null), 2500);
-      setPreviousTab(tab);
-      setTab('history');
-    } catch {
-      setError('This entry could not be saved. Check the backend connection and try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const loadInsights = async () => {
     if (!baby || insightLoading) return;
@@ -415,11 +307,6 @@ export default function App() {
               />
             }
           >
-            {notice && (
-              <View style={common.notice}>
-                <Text style={common.noticeText}>âœ“ {notice}</Text>
-              </View>
-            )}
             {error && (
               <TouchableOpacity style={common.errorBanner} onPress={() => void loadData()}>
                 <Text style={common.errorText}>{error}</Text>
@@ -431,90 +318,6 @@ export default function App() {
                 <ActivityIndicator size="large" color={C.purple} />
                 <Text style={common.loadingText}>Loading Charlie's day...</Text>
               </View>
-            ) : null}
-            {showNotifications ? (
-              <View style={{ paddingBottom: 40 }}>
-                <Header
-                  title="Notification Center"
-                  action="✕"
-                  onPress={() => setShowNotifications(false)}
-                />
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 20,
-                  }}
-                >
-                  <SectionTitle>Recent Alerts</SectionTitle>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity
-                      onPress={async () => {
-                        try {
-                          const data = await api.listRecentNotifications();
-                          setNotifications(data);
-                        } catch {}
-                      }}
-                      style={{
-                        backgroundColor: C.purpleSoft,
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 12,
-                      }}
-                    >
-                      <Text style={{ color: C.purpleDark, fontWeight: '700', fontSize: 12 }}>
-                        Refresh
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={async () => {
-                        try {
-                          await api.clearNotifications();
-                          setNotifications([]);
-                        } catch {}
-                      }}
-                      style={{
-                        backgroundColor: '#FEE2E2',
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 12,
-                      }}
-                    >
-                      <Text style={{ color: '#EF4444', fontWeight: '700', fontSize: 12 }}>
-                        Clear
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {!notifications.length ? (
-                  <EmptyState
-                    title="No notifications"
-                    description="All caught up! Active alerts will appear here."
-                  />
-                ) : (
-                  notifications.map((n) => (
-                    <SwipeableNotification
-                      key={n.id}
-                      notification={n}
-                      onDismiss={async () => {
-                        try {
-                          await api.deleteNotification(n.id);
-                        } catch {}
-                        setNotifications((prev) => prev.filter((x) => x.id !== n.id));
-                      }}
-                    />
-                  ))
-                )}
-
-                <TouchableOpacity
-                  onPress={() => setShowNotifications(false)}
-                  style={[styles.logButton, { marginTop: 20, backgroundColor: '#ECECEC' }]}
-                >
-                  <Text style={{ color: C.ink, fontWeight: '700' }}>Close</Text>
-                </TouchableOpacity>
-              </View>
             ) : (
               <>
                 {tab === 'home' && (
@@ -523,57 +326,22 @@ export default function App() {
                     allBabies={allBabies}
                     onSelectBaby={handleSelectBaby}
                     onSignOut={handleSignOut}
+                    onAddBaby={() => setAddBabyModalVisible(true)}
                     events={visibleEvents}
                     feedings={feedings}
                     diapers={diapers}
                     sleep={sleep}
-                    onQuickLog={(kind) => {
-                      setActivity(kind);
-                      setTab('log');
-                    }}
+                    onQuickLog={() => {}}
                     activeSleepStart={activeSleepStart}
                     elapsedSeconds={elapsedSeconds}
                     formatElapsed={formatElapsed}
                     notifications={notifications}
                     onPressNotifications={() => setShowNotifications(true)}
                     onRefreshData={() => loadData(false)}
-                  />
-                )}
-                {tab === 'log' && (
-                  <LogScreen
-                    activity={activity}
-                    setActivity={setActivity}
-                    feedType={feedType}
-                    setFeedType={setFeedType}
-                    subtype={subtype}
-                    setSubtype={setSubtype}
-                    amount={amount}
-                    setAmount={setAmount}
-                    duration={duration}
-                    setDuration={setDuration}
-                    notes={notes}
-                    setNotes={setNotes}
-                    saving={saving}
-                    onLog={logActivity}
-                    activeSleepStart={activeSleepStart}
-                    setActiveSleepStart={setActiveSleepStart}
-                    sleepTrackingMode={sleepTrackingMode}
-                    setSleepTrackingMode={setSleepTrackingMode}
-                    elapsedSeconds={elapsedSeconds}
-                    formatElapsed={formatElapsed}
-                    customTimeEnabled={customTimeEnabled}
-                    setCustomTimeEnabled={setCustomTimeEnabled}
-                    customTime={customTime}
-                    setCustomTime={setCustomTime}
-                    unitSystem={unitSystem}
-                    setUnitSystem={setUnitSystem}
-                    weightInput={weightInput}
-                    setWeightInput={setWeightInput}
-                    heightInput={heightInput}
-                    setHeightInput={setHeightInput}
-                    breastSide={breastSide}
-                    setBreastSide={setBreastSide}
-                    onPressHeaderAction={() => setShowLogMenu(true)}
+                    onSavedActivity={(kind, id) => {
+                      setLastLoggedEvent({ kind, id });
+                      setNotice(`New ${kind} logged successfully.`);
+                    }}
                   />
                 )}
                 {tab === 'growth' && (
@@ -592,7 +360,7 @@ export default function App() {
                     sleepSessions={sleep}
                     diapers={diapers}
                     onRefreshData={loadData}
-                    onBack={() => setTab(previousTab)}
+                    onPressViewDeleted={() => setShowDeletedModal(true)}
                   />
                 )}
                 {tab === 'insights' && (
@@ -603,73 +371,70 @@ export default function App() {
                     feedings={feedings}
                     sleep={sleep}
                     onGenerate={loadInsights}
+                    aiQuestion={aiQuestion}
+                    setAiQuestion={setAiQuestion}
+                    aiAnswer={aiAnswer}
+                    setAiAnswer={setAiAnswer}
                   />
                 )}
                 {tab === 'milestones' && <MilestonesScreen baby={baby} />}
               </>
             )}
           </ScrollView>
-          {!showNotifications && (
-            <BottomNav
-              active={tab}
-              onChange={(newTab) => {
-                if (newTab === 'history') setPreviousTab(tab);
-                setTab(newTab);
-              }}
-            />
-          )}
+          <BottomNav
+            active={tab}
+            onChange={(newTab) => {
+              if (newTab === 'history') setPreviousTab(tab);
+              setTab(newTab);
+            }}
+            activeSleepStart={activeSleepStart}
+          />
         </View>
       </KeyboardAvoidingView>
 
-      {/* Log Options Menu Modal */}
-      <Modal
-        visible={showLogMenu}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowLogMenu(false)}
-      >
-        <TouchableOpacity
-          style={common.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowLogMenu(false)}
-        >
-          <View style={common.menuContainer}>
-            <View style={common.menuHeader}>
-              <Text style={common.menuTitle}>Log Options</Text>
-              <TouchableOpacity onPress={() => setShowLogMenu(false)} style={common.menuCloseBtn}>
-                <Text style={{ fontSize: 16, color: C.muted, fontWeight: '700' }}>✕</Text>
-              </TouchableOpacity>
-            </View>
+      <Toast
+        visible={notice != null}
+        message={notice}
+        onUndo={lastLoggedEvent ? handleUndo : undefined}
+        onDismiss={() => setNotice(null)}
+      />
 
-            <TouchableOpacity
-              style={common.menuItem}
-              onPress={() => {
-                setShowLogMenu(false);
-                setPreviousTab(tab);
-                setTab('history');
-              }}
-            >
-              <View style={common.menuIconCircle}>
-                <Text style={common.menuIcon}>📋</Text>
-              </View>
-              <Text style={common.menuItemText}>View History</Text>
-            </TouchableOpacity>
+      <AddBabyModal
+        visible={addBabyModalVisible}
+        onClose={() => setAddBabyModalVisible(false)}
+        onCreated={async (newBaby) => {
+          setAddBabyModalVisible(false);
+          await handleSelectBaby(newBaby);
+          void loadData(false);
+          setNotice(`Baby profile created for ${newBaby.name}!`);
+        }}
+      />
 
-            <TouchableOpacity
-              style={[common.menuItem, { borderBottomWidth: 0 }]}
-              onPress={() => {
-                setShowLogMenu(false);
-                setShowDeletedModal(true);
-              }}
-            >
-              <View style={[common.menuIconCircle, { backgroundColor: '#FEE2E2' }]}>
-                <Text style={[common.menuIcon, { color: '#EF4444' }]}>🗑️</Text>
-              </View>
-              <Text style={common.menuItemText}>Deleted Activities</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <NotificationsModal
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        notifications={notifications}
+        onDismiss={async (id) => {
+          try {
+            await api.deleteNotification(id);
+          } catch {}
+          setNotifications((prev) => prev.filter((x) => x.id !== id));
+        }}
+        onClear={async () => {
+          try {
+            await api.clearNotifications();
+            setNotifications([]);
+            setNotice('All notifications cleared.');
+          } catch {}
+        }}
+        onRefresh={async () => {
+          try {
+            const data = await api.listRecentNotifications();
+            setNotifications(data);
+            setNotice('Notifications refreshed.');
+          } catch {}
+        }}
+      />
 
       <DeletedActivitiesModal
         visible={showDeletedModal}

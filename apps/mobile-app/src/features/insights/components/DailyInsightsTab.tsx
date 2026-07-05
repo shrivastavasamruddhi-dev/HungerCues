@@ -21,6 +21,11 @@ interface Props {
   averageSleep: number;
   averageBottle: number;
   onGenerate: () => Promise<void>;
+  // Persisted state props
+  aiQuestion: string;
+  setAiQuestion: (val: string) => void;
+  aiAnswer: string | null;
+  setAiAnswer: (val: string | null) => void;
 }
 
 export function DailyInsightsTab({
@@ -31,20 +36,22 @@ export function DailyInsightsTab({
   averageSleep,
   averageBottle,
   onGenerate,
+  aiQuestion,
+  setAiQuestion,
+  aiAnswer,
+  setAiAnswer,
 }: Props) {
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState<string | null>(null);
   const [askLoading, setAskLoading] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
 
   const submitQuestion = async () => {
-    if (!baby || !question.trim() || askLoading) return;
+    if (!baby || !aiQuestion.trim() || askLoading) return;
     setAskLoading(true);
     setAskError(null);
-    setAnswer(null);
+    setAiAnswer(null);
     try {
-      const result = await aiService.askQuestion(baby.id, question.trim());
-      setAnswer(result.answer);
+      const result = await aiService.askQuestion(baby.id, aiQuestion.trim());
+      setAiAnswer(result.answer);
     } catch {
       setAskError('Could not reach the AI assistant. Check the backend connection and try again.');
     } finally {
@@ -64,8 +71,8 @@ export function DailyInsightsTab({
         </Text>
       </View>
       <View style={styles.insightRow}>
-        <StatCard label="Average sleep" value={`${averageSleep}m`} reverseLayout />
-        <StatCard label="Average bottle" value={`${averageBottle}ml`} reverseLayout />
+        <StatCard label="Average sleep" value={averageSleep > 0 ? `${averageSleep}m` : '—'} reverseLayout />
+        <StatCard label="Average bottle" value={averageBottle > 0 ? `${averageBottle}ml` : '—'} reverseLayout />
       </View>
       {insight && (
         <View style={styles.recommendationCard}>
@@ -100,8 +107,8 @@ export function DailyInsightsTab({
         <View style={styles.askInputContainer}>
           <TextInput
             accessibilityLabel="Parenting question input"
-            value={question}
-            onChangeText={setQuestion}
+            value={aiQuestion}
+            onChangeText={setAiQuestion}
             placeholder="e.g. Charlie sleeping enough?"
             placeholderTextColor="#A9A9A9"
             style={styles.askInput}
@@ -109,11 +116,11 @@ export function DailyInsightsTab({
           />
           <TouchableOpacity
             accessibilityLabel="Submit question"
-            disabled={askLoading || !question.trim()}
+            disabled={askLoading || !aiQuestion.trim()}
             onPress={() => void submitQuestion()}
             style={[
               styles.askSubmitButton,
-              { width: 46, opacity: askLoading || !question.trim() ? 0.5 : 1 },
+              { width: 46, opacity: askLoading || !aiQuestion.trim() ? 0.5 : 1 },
             ]}
           >
             {askLoading ? (
@@ -124,21 +131,21 @@ export function DailyInsightsTab({
           </TouchableOpacity>
         </View>
         {askError && <ErrorBox message={askError} style={{ marginTop: 12 }} />}
-        {answer && (
+        {aiAnswer && (
           <View style={styles.answerBox}>
             <View style={styles.answerHeaderRow}>
               <Text style={styles.answerTitle}>AI Response</Text>
               <TouchableOpacity
                 accessibilityLabel="Clear answer"
                 onPress={() => {
-                  setAnswer(null);
-                  setQuestion('');
+                  setAiAnswer(null);
+                  setAiQuestion('');
                 }}
               >
                 <Text style={styles.clearText}>Clear</Text>
               </TouchableOpacity>
             </View>
-            <Text style={[styles.answerContentText, { marginTop: 10 }]}>{answer}</Text>
+            <Text style={[styles.answerContentText, { marginTop: 10 }]}>{aiAnswer}</Text>
           </View>
         )}
       </View>
@@ -172,6 +179,8 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
     borderRadius: 20,
     padding: 18,
+    borderWidth: 1,
+    borderColor: '#ECECEC',
   },
   askTitle: {
     fontSize: 18,
@@ -180,41 +189,45 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   askSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: C.muted,
+    lineHeight: 16,
     marginBottom: 16,
+    fontWeight: '600',
   },
   askInputContainer: {
     flexDirection: 'row',
-    gap: 10,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#F4F4F4',
+    paddingLeft: 14,
     alignItems: 'center',
+    overflow: 'hidden',
   },
   askInput: {
     flex: 1,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: '#F4F4F4',
-    paddingHorizontal: 14,
-    color: C.ink,
     fontSize: 14,
+    color: C.ink,
+    height: '100%',
   },
   askSubmitButton: {
-    height: 46,
-    borderRadius: 14,
+    height: 48,
     backgroundColor: C.purple,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   askSubmitButtonText: {
     color: '#FFF',
+    fontSize: 20,
     fontWeight: '700',
-    fontSize: 18,
   },
   answerBox: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#F7EEFC',
     borderRadius: 16,
     padding: 14,
-    marginTop: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#E6C6F5',
   },
   answerHeaderRow: {
     flexDirection: 'row',
@@ -222,17 +235,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   answerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: C.ink,
+    fontSize: 12,
+    fontWeight: '800',
+    color: C.purpleDark,
+    letterSpacing: 0.8,
   },
   clearText: {
-    fontSize: 12,
+    fontSize: 11,
     color: C.muted,
+    fontWeight: '700',
   },
   answerContentText: {
-    fontSize: 14,
+    fontSize: 13,
     color: C.ink,
-    lineHeight: 20,
+    lineHeight: 18,
   },
 });

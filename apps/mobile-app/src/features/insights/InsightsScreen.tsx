@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/colors';
 import { Header } from '../../components/Header';
@@ -14,13 +14,36 @@ interface Props {
   feedings: Feeding[];
   sleep: SleepSession[];
   onGenerate: () => Promise<void>;
+  // AI assistant states
+  aiQuestion: string;
+  setAiQuestion: (val: string) => void;
+  aiAnswer: string | null;
+  setAiAnswer: (val: string | null) => void;
 }
 
-export function InsightsScreen({ baby, insight, loading, feedings, sleep, onGenerate }: Props) {
+export function InsightsScreen({
+  baby,
+  insight,
+  loading,
+  feedings,
+  sleep,
+  onGenerate,
+  aiQuestion,
+  setAiQuestion,
+  aiAnswer,
+  setAiAnswer,
+}: Props) {
   const [insightsTab, setInsightsTab] = useState<'daily' | 'weekly'>('daily');
   const [weeklySummary, setWeeklySummary] = useState<AIWeeklySummary | null>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
+
+  // Auto-generate daily AI insights if none exist on screen visit
+  useEffect(() => {
+    if (!insight && !loading && (feedings.length > 0 || sleep.length > 0)) {
+      void onGenerate();
+    }
+  }, [insight, loading, feedings, sleep, onGenerate]);
 
   const averageBottle = feedings.filter((item) => item.quantity_ml).length
     ? Math.round(
@@ -100,6 +123,10 @@ export function InsightsScreen({ baby, insight, loading, feedings, sleep, onGene
           averageSleep={averageSleep}
           averageBottle={averageBottle}
           onGenerate={onGenerate}
+          aiQuestion={aiQuestion}
+          setAiQuestion={setAiQuestion}
+          aiAnswer={aiAnswer}
+          setAiAnswer={setAiAnswer}
         />
       ) : (
         <WeeklySummaryTab

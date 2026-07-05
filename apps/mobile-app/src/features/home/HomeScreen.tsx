@@ -25,6 +25,7 @@ interface Props {
   allBabies: Baby[];
   onSelectBaby: (baby: Baby) => void;
   onSignOut: () => void;
+  onAddBaby: () => void;
   events: TimelineEvent[];
   feedings: Feeding[];
   diapers: DiaperChange[];
@@ -36,6 +37,7 @@ interface Props {
   notifications: NotificationEntry[];
   onPressNotifications: () => void;
   onRefreshData: () => Promise<void>;
+  onSavedActivity: (kind: 'feed' | 'sleep' | 'diaper', id: number) => void;
 }
 
 export function HomeScreen({
@@ -43,6 +45,7 @@ export function HomeScreen({
   allBabies,
   onSelectBaby,
   onSignOut,
+  onAddBaby,
   events,
   feedings,
   diapers,
@@ -53,6 +56,7 @@ export function HomeScreen({
   notifications,
   onPressNotifications,
   onRefreshData,
+  onSavedActivity,
 }: Props) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [quickLogVisible, setQuickLogVisible] = useState(false);
@@ -67,7 +71,6 @@ export function HomeScreen({
     sleepChartData,
     sleepMax,
     diaperTodayData,
-    counts,
     timeToPercent,
     formatDuration,
     formatTime12,
@@ -78,8 +81,9 @@ export function HomeScreen({
     setQuickLogVisible(true);
   };
 
-  const handleSaved = () => {
+  const handleSaved = (kind: 'feed' | 'sleep' | 'diaper', id: number) => {
     void onRefreshData();
+    onSavedActivity(kind, id);
   };
 
   const unreadCount = notifications.length;
@@ -113,7 +117,12 @@ export function HomeScreen({
         feedChartData={feedChartData}
         feedMax={feedMax}
         DAY_LABELS={DAY_LABELS}
-        todayCount={counts.feed}
+        todayCount={feedings.filter((f) => {
+          const t = new Date(f.start_time).getTime();
+          const d = new Date();
+          d.setHours(0,0,0,0);
+          return t >= d.getTime();
+        }).length}
         onQuickLog={() => handleOpenQuickLog('feed')}
       />
 
@@ -142,6 +151,7 @@ export function HomeScreen({
         allBabies={allBabies}
         onSelectBaby={onSelectBaby}
         onSignOut={onSignOut}
+        onAddBaby={onAddBaby}
       />
 
       {/* Inline Quick Logging Bottom Sheet Modal */}

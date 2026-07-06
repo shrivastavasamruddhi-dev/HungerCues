@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, Vibration } from 'react-native';
 import { feedingService } from '../services/feedingService';
 import { sleepService } from '../services/sleepService';
 import { diaperService } from '../services/diaperService';
@@ -13,6 +13,7 @@ export function useDeleteActivities({ onRefreshData }: Params) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const handleLongPress = (id: string) => {
+    Vibration.vibrate(20);
     if (selectedIds.includes(id)) {
       setSelectedIds(selectedIds.filter((x) => x !== id));
     } else {
@@ -48,6 +49,7 @@ export function useDeleteActivities({ onRefreshData }: Params) {
           }
         }),
       );
+      Vibration.vibrate(80);
       setSelectedIds([]);
       await onRefreshData();
     } catch {

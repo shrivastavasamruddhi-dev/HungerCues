@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Animated } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Animated, Platform } from 'react-native';
 import { C } from '../constants/colors';
 
 interface Props {
@@ -17,7 +17,7 @@ export function Toast({ visible, message, onUndo, onDismiss }: Props) {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 250,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
 
       const timer = setTimeout(() => {
@@ -35,7 +35,7 @@ export function Toast({ visible, message, onUndo, onDismiss }: Props) {
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 200,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start(() => {
       onDismiss();
     });

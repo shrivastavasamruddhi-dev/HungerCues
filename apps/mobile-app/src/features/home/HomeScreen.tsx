@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { Bell } from 'lucide-react-native';
 import { C } from '../../constants/colors';
 import { Header } from '../../components/Header';
-import { BabyProfileCard } from '../../components/BabyProfileCard';
+import { HeroCard } from '../../components/HeroCard';
 import { SidebarPanel } from '../../components/SidebarPanel';
-import { FeedCard } from './components/FeedCard';
-import { SleepCard } from './components/SleepCard';
-import { DiaperCard } from './components/DiaperCard';
-import { QuickLogModal } from '../../components/QuickLogModal';
+import { StatsGrid } from './components/StatsGrid';
 import { useHomeData } from '../../hooks/useHomeData';
 
 import type {
@@ -50,19 +48,12 @@ export function HomeScreen({
   feedings,
   diapers,
   sleep,
-  activeSleepStart,
-  elapsedSeconds,
-  formatElapsed,
   notifications,
   onPressNotifications,
-  onRefreshData,
-  onSavedActivity,
+  onQuickLog,
 }: Props) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [quickLogVisible, setQuickLogVisible] = useState(false);
-  const [quickLogActivity, setQuickLogActivity] = useState<Activity>('feed');
 
-  // Compute stats for all graphs
   const {
     DAY_LABELS,
     feedChartData,
@@ -76,17 +67,34 @@ export function HomeScreen({
     formatTime12,
   } = useHomeData({ feedings, sleepSessions: sleep, diapers, events });
 
-  const handleOpenQuickLog = (activityType: Activity) => {
-    setQuickLogActivity(activityType);
-    setQuickLogVisible(true);
-  };
-
-  const handleSaved = (kind: 'feed' | 'sleep' | 'diaper', id: number) => {
-    void onRefreshData();
-    onSavedActivity(kind, id);
-  };
-
   const unreadCount = notifications.length;
+
+  // Today's feed totals
+  const startOfDay = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, []);
+
+  const todayFeedings = useMemo(
+    () => feedings.filter((f) => new Date(f.start_time).getTime() >= startOfDay),
+    [feedings, startOfDay],
+  );
+
+  const todayFeedMl = useMemo(
+    () =>
+      todayFeedings.reduce((acc, f) => {
+        if (f.type === 'bottle') return acc + (f.quantity_ml ?? 0);
+        // breast: estimate ~4ml/min
+        return acc + (f.duration_minutes ?? 0) * 4;
+      }, 0),
+    [todayFeedings],
+  );
+
+  const todaySleepMins = useMemo(
+    () => todaySleepSessions.reduce((acc, s) => acc + (s.duration_minutes ?? 0), 0),
+    [todaySleepSessions],
+  );
 
   return (
     <View style={styles.container}>
@@ -96,7 +104,7 @@ export function HomeScreen({
         onPress={onPressNotifications}
         action={
           <View style={styles.bellContainer}>
-            <Text style={styles.bellEmoji}>🔔</Text>
+            <Bell size={22} color={C.purpleDark} />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -106,44 +114,36 @@ export function HomeScreen({
         }
       />
 
-      {/* Baby Profile Card */}
-      <BabyProfileCard
+      {/* Hero Card — baby profile + contextual status + quick actions */}
+      <HeroCard
         baby={baby}
+        feedings={feedings}
+        sleep={sleep}
         onOpenSidebar={() => setSidebarVisible(true)}
+        onQuickLog={onQuickLog}
       />
 
-      {/* Analytics Cards */}
-      <FeedCard
+      {/* Analytics grid: 2-col stat tiles + chart panel + diaper */}
+      <StatsGrid
         feedChartData={feedChartData}
         feedMax={feedMax}
         DAY_LABELS={DAY_LABELS}
-        todayCount={feedings.filter((f) => {
-          const t = new Date(f.start_time).getTime();
-          const d = new Date();
-          d.setHours(0,0,0,0);
-          return t >= d.getTime();
-        }).length}
-        onQuickLog={() => handleOpenQuickLog('feed')}
-      />
-
-      <SleepCard
+        todayFeedCount={todayFeedings.length}
+        todayFeedMl={todayFeedMl}
         todaySleepSessions={todaySleepSessions}
         sleepChartData={sleepChartData}
         sleepMax={sleepMax}
-        DAY_LABELS={DAY_LABELS}
+        todaySleepMins={todaySleepMins}
         timeToPercent={timeToPercent}
         formatDuration={formatDuration}
         formatTime12={formatTime12}
-        onQuickLog={() => handleOpenQuickLog('sleep')}
-      />
-
-      <DiaperCard
         diaperTodayData={diaperTodayData}
-        formatTime12={formatTime12}
-        onQuickLog={() => handleOpenQuickLog('diaper')}
+        onQuickFeed={() => onQuickLog('feed')}
+        onQuickSleep={() => onQuickLog('sleep')}
+        onQuickDiaper={() => onQuickLog('diaper')}
       />
 
-      {/* Sidebar Navigation */}
+      {/* Sidebar */}
       <SidebarPanel
         visible={sidebarVisible}
         onClose={() => setSidebarVisible(false)}
@@ -153,29 +153,13 @@ export function HomeScreen({
         onSignOut={onSignOut}
         onAddBaby={onAddBaby}
       />
-
-      {/* Inline Quick Logging Bottom Sheet Modal */}
-      <QuickLogModal
-        visible={quickLogVisible}
-        activity={quickLogActivity}
-        baby={baby}
-        onClose={() => setQuickLogVisible(false)}
-        onSaved={handleSaved}
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  bellContainer: {
-    position: 'relative',
-  },
-  bellEmoji: {
-    fontSize: 22,
-  },
+  container: { flex: 1 },
+  bellContainer: { position: 'relative' },
   badge: {
     position: 'absolute',
     right: -4,

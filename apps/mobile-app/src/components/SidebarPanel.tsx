@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     marginBottom: 26,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     color: C.muted,
     letterSpacing: 1,
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     color: C.purpleDark,
   },
   babyGender: {
-    fontSize: 10,
+    fontSize: 12,
     color: C.muted,
     marginTop: 1,
   },

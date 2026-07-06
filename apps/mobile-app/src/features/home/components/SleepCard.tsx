@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Moon } from 'lucide-react-native';
 import { C } from '../../../constants/colors';
 import { SleepGraph } from '../../history/components/SleepGraph';
 import type { SleepSession } from '../../../types';
@@ -35,7 +36,7 @@ export function SleepCard({
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.titleContainer}>
-          <Text style={styles.titleEmoji}>😴</Text>
+          <Moon size={24} color={C.purpleDark} />
           <View>
             <Text style={styles.titleText}>Sleep</Text>
             <Text style={styles.subtitleText}>
@@ -107,20 +108,23 @@ const styles = StyleSheet.create({
     color: C.ink,
   },
   subtitleText: {
-    fontSize: 11,
+    fontSize: 12,
     color: C.muted,
     fontWeight: '600',
     marginTop: 1,
   },
   addButton: {
     backgroundColor: C.purple,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addButtonText: {
     color: '#FFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
   summaryRow: {
@@ -134,10 +138,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: 12,
     color: '#4F46E5',
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   statValue: {
     fontSize: 16,

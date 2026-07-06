@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Baby } from 'lucide-react-native';
 import { C } from '../../../constants/colors';
 import { DiaperSummary } from '../../history/components/DiaperSummary';
 
@@ -23,7 +24,7 @@ export function DiaperCard({
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.titleContainer}>
-          <Text style={styles.titleEmoji}>🧷</Text>
+          <Baby size={24} color={C.purpleDark} />
           <View>
             <Text style={styles.titleText}>Diaper</Text>
             <Text style={styles.subtitleText}>
@@ -81,20 +82,23 @@ const styles = StyleSheet.create({
     color: C.ink,
   },
   subtitleText: {
-    fontSize: 11,
+    fontSize: 12,
     color: C.muted,
     fontWeight: '600',
     marginTop: 1,
   },
   addButton: {
     backgroundColor: C.purple,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addButtonText: {
     color: '#FFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
 });

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { C } from '../../../constants/colors';
 import type { SleepSession } from '../../../types';
 
@@ -34,7 +34,7 @@ export function SleepGraph({
         } else if (g.dx > 40) {
           setSleepView(0);
         }
-        Animated.spring(sleepSwipeX, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
+        Animated.spring(sleepSwipeX, { toValue: 0, useNativeDriver: Platform.OS !== 'web', friction: 8 }).start();
       },
       onPanResponderMove: (_, g) => sleepSwipeX.setValue(g.dx),
     }),

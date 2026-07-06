@@ -69,6 +69,9 @@ function DatePicker({
         style={dpStyles.displayRow}
         onPress={() => setOpen(!open)}
         activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel={`Date of birth: ${value ? formatDisplayDate(value) : 'Not set'}`}
+        accessibilityHint="Tap to open date picker"
       >
         <Text style={dpStyles.calIcon}>📅</Text>
         <Text style={dpStyles.displayText}>
@@ -110,9 +113,9 @@ function DatePicker({
               <View style={dpStyles.nativePicker}>
                 {/* Day */}
                 <View style={dpStyles.col}>
-                  <TouchableOpacity onPress={() => adjD(1)} style={dpStyles.arrow}><Text style={dpStyles.arrowTxt}>▲</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => adjD(1)} style={dpStyles.arrow} accessibilityRole="button" accessibilityLabel="Increase day"><Text style={dpStyles.arrowTxt}>▲</Text></TouchableOpacity>
                   <View style={dpStyles.cell}><Text style={dpStyles.cellVal}>{String(d).padStart(2, '0')}</Text></View>
-                  <TouchableOpacity onPress={() => adjD(-1)} style={dpStyles.arrow}><Text style={dpStyles.arrowTxt}>▼</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => adjD(-1)} style={dpStyles.arrow} accessibilityRole="button" accessibilityLabel="Decrease day"><Text style={dpStyles.arrowTxt}>▼</Text></TouchableOpacity>
                   <Text style={dpStyles.colLabel}>Day</Text>
                 </View>
 
@@ -120,11 +123,11 @@ function DatePicker({
 
                 {/* Month */}
                 <View style={dpStyles.col}>
-                  <TouchableOpacity onPress={() => adjMo(1)} style={dpStyles.arrow}><Text style={dpStyles.arrowTxt}>▲</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => adjMo(1)} style={dpStyles.arrow} accessibilityRole="button" accessibilityLabel="Increase month"><Text style={dpStyles.arrowTxt}>▲</Text></TouchableOpacity>
                   <View style={[dpStyles.cell, { width: 60 }]}>
                     <Text style={[dpStyles.cellVal, { fontSize: 18 }]}>{MONTH_NAMES[(mo - 1) % 12]}</Text>
                   </View>
-                  <TouchableOpacity onPress={() => adjMo(-1)} style={dpStyles.arrow}><Text style={dpStyles.arrowTxt}>▼</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => adjMo(-1)} style={dpStyles.arrow} accessibilityRole="button" accessibilityLabel="Decrease month"><Text style={dpStyles.arrowTxt}>▼</Text></TouchableOpacity>
                   <Text style={dpStyles.colLabel}>Month</Text>
                 </View>
 
@@ -132,9 +135,9 @@ function DatePicker({
 
                 {/* Year */}
                 <View style={dpStyles.col}>
-                  <TouchableOpacity onPress={() => adjY(1)} style={dpStyles.arrow}><Text style={dpStyles.arrowTxt}>▲</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => adjY(1)} style={dpStyles.arrow} accessibilityRole="button" accessibilityLabel="Increase year"><Text style={dpStyles.arrowTxt}>▲</Text></TouchableOpacity>
                   <View style={[dpStyles.cell, { width: 76 }]}><Text style={[dpStyles.cellVal, { fontSize: 22 }]}>{y}</Text></View>
-                  <TouchableOpacity onPress={() => adjY(-1)} style={dpStyles.arrow}><Text style={dpStyles.arrowTxt}>▼</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => adjY(-1)} style={dpStyles.arrow} accessibilityRole="button" accessibilityLabel="Decrease year"><Text style={dpStyles.arrowTxt}>▼</Text></TouchableOpacity>
                   <Text style={dpStyles.colLabel}>Year</Text>
                 </View>
               </View>
@@ -264,7 +267,13 @@ export function AddBabyModal({ visible, onClose, onCreated }: Props) {
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={handleClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close add baby modal"
+        />
 
         <View style={styles.sheet}>
           {/* Handle bar */}
@@ -273,7 +282,12 @@ export function AddBabyModal({ visible, onClose, onCreated }: Props) {
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Add Baby Profile</Text>
-            <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={handleClose}
+              style={styles.closeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Close add baby modal"
+            >
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -317,6 +331,9 @@ export function AddBabyModal({ visible, onClose, onCreated }: Props) {
                   key={g}
                   onPress={() => setGender(g)}
                   style={[styles.genderBtn, gender === g && styles.genderBtnActive]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select ${g}`}
+                  accessibilityState={{ selected: gender === g }}
                 >
                   <Text style={[styles.genderEmoji]}>
                     {g === 'Boy' ? '👦' : g === 'Girl' ? '👧' : '🧒'}
@@ -333,6 +350,9 @@ export function AddBabyModal({ visible, onClose, onCreated }: Props) {
               style={[styles.saveBtn, saving && styles.btnDisabled]}
               onPress={() => void handleSave()}
               disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel="Create baby profile"
+              accessibilityState={{ disabled: saving }}
             >
               {saving ? (
                 <ActivityIndicator color="#FFF" />
@@ -371,7 +391,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: '800', color: C.ink },
   closeBtn: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
   },
   closeText: { fontSize: 14, color: C.muted, fontWeight: '700' },

@@ -13,6 +13,8 @@ import { ErrorBox } from '../../../components/ErrorBox';
 import { aiService } from '../../../services/aiService';
 import type { Baby, Feeding, AIInsight } from '../../../types';
 
+import { SkeletonCard } from '../../../components/SkeletonCard';
+
 interface Props {
   baby: Baby | null;
   insight: AIInsight | null;
@@ -61,28 +63,37 @@ export function DailyInsightsTab({
 
   return (
     <View>
-      <View style={styles.insightCard}>
-        <Text style={styles.insightEyebrow}>LIVE SUMMARY</Text>
-        <Text style={styles.insightNumber}>{feedings.length}</Text>
-        <Text style={styles.insightUnit}>feedings logged</Text>
-        <Text style={styles.insightCopy}>
-          {insight?.summary ??
-            'Generate a personalized summary from the feeding and sleep entries stored in the database.'}
-        </Text>
-      </View>
-      <View style={styles.insightRow}>
-        <StatCard label="Average sleep" value={averageSleep > 0 ? `${averageSleep}m` : '—'} reverseLayout />
-        <StatCard label="Average bottle" value={averageBottle > 0 ? `${averageBottle}ml` : '—'} reverseLayout />
-      </View>
-      {insight && (
-        <View style={styles.recommendationCard}>
-          <Text style={styles.recommendationTitle}>Recommended next steps</Text>
-          {insight.recommendations.map((item, index) => (
-            <Text key={item} style={styles.recommendationText}>
-              {index + 1}. {item}
-            </Text>
-          ))}
+      {loading ? (
+        <View style={{ gap: 12, marginBottom: 14 }}>
+          <SkeletonCard />
+          <SkeletonCard style={{ minHeight: 120 }} />
         </View>
+      ) : (
+        <>
+          <View style={styles.insightCard}>
+            <Text style={styles.insightEyebrow}>LIVE SUMMARY</Text>
+            <Text style={styles.insightNumber}>{feedings.length}</Text>
+            <Text style={styles.insightUnit}>feedings logged</Text>
+            <Text style={styles.insightCopy}>
+              {insight?.summary ??
+                'Generate a personalized summary from the feeding and sleep entries stored in the database.'}
+            </Text>
+          </View>
+          <View style={styles.insightRow}>
+            <StatCard label="Average sleep" value={averageSleep > 0 ? `${averageSleep}m` : '—'} reverseLayout />
+            <StatCard label="Average bottle" value={averageBottle > 0 ? `${averageBottle}ml` : '—'} reverseLayout />
+          </View>
+          {insight && (
+            <View style={styles.recommendationCard}>
+              <Text style={styles.recommendationTitle}>Recommended next steps</Text>
+              {insight.recommendations.map((item, index) => (
+                <Text key={item} style={styles.recommendationText}>
+                  {index + 1}. {item}
+                </Text>
+              ))}
+            </View>
+          )}
+        </>
       )}
       <TouchableOpacity
         disabled={loading}

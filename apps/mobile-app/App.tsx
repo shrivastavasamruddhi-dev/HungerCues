@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -37,8 +38,12 @@ import { formatElapsed, getCustomDateTime, parseDurationHHMM } from './src/utils
 import { common } from './src/styles/common';
 import { useActiveSleepTimer } from './src/hooks/useActiveSleepTimer';
 
+import { Milk, Moon, Baby as BabyIcon } from 'lucide-react-native';
+
 import { Header } from './src/components/Header';
 import { BottomNav } from './src/components/BottomNav';
+import { SleepTimerBanner } from './src/components/SleepTimerBanner';
+import { QuickLogModal } from './src/components/QuickLogModal';
 import { SwipeableNotification } from './src/components/SwipeableNotification';
 import { DeletedActivitiesModal } from './src/components/DeletedActivitiesModal';
 import { HomeScreen } from './src/features/home/HomeScreen';
@@ -46,7 +51,6 @@ import { GrowthScreen } from './src/features/growth/GrowthScreen';
 import { HistoryScreen } from './src/features/history/HistoryScreen';
 import { InsightsScreen } from './src/features/insights/InsightsScreen';
 import { MilestonesScreen } from './src/features/milestones/MilestonesScreen';
-import { SectionTitle } from './src/components/SectionTitle';
 import { EmptyState } from './src/components/EmptyState';
 import { AddBabyModal } from './src/components/AddBabyModal';
 import { NotificationsModal } from './src/components/NotificationsModal';
@@ -87,6 +91,8 @@ export default function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
   const [showLogMenu, setShowLogMenu] = useState(false);
+  const [quickLogVisible, setQuickLogVisible] = useState(false);
+  const [quickLogActivity, setQuickLogActivity] = useState<Activity>('feed');
   const [showDeletedModal, setShowDeletedModal] = useState(false);
   const [addBabyModalVisible, setAddBabyModalVisible] = useState(false);
   const [lastLoggedEvent, setLastLoggedEvent] = useState<{ kind: 'feed' | 'sleep' | 'diaper'; id: number } | null>(null);
@@ -94,11 +100,49 @@ export default function App() {
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const compact = width < 430;
 
+  const openQuickLog = (kind: Activity) => {
+    setQuickLogActivity(kind);
+    setQuickLogVisible(true);
+    closeLogMenu();
+  };
+
+  // ── Spring-animated bottom sheet for log selector ──
+  const sheetAnim = useRef(new Animated.Value(320)).current;
+
+  const openLogMenu = () => {
+    setShowLogMenu(true);
+    Animated.spring(sheetAnim, {
+      toValue: 0,
+      tension: 80,
+      friction: 12,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  };
+
+  const closeLogMenu = () => {
+    Animated.spring(sheetAnim, {
+      toValue: 320,
+      tension: 80,
+      friction: 12,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start(() => setShowLogMenu(false));
+  };
+
   const loadData = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
     setError(null);
     try {
       const babies = await api.listBabies();
+      if (babies.length === 0) {
+        setBaby(null);
+        setAllBabies([]);
+        setFeedings([]);
+        setSleep([]);
+        setDiapers([]);
+        setGrowth([]);
+        setAddBabyModalVisible(true);
+        return;
+      }
       const activeBaby = baby ? (babies.find(b => b.id === baby.id) || babies[0]) : babies[0];
       if (!activeBaby) throw new Error('No baby profile was found.');
       const [feedingData, sleepData, diaperData, growthData] = await Promise.all([
@@ -272,6 +316,29 @@ export default function App() {
 
   const visibleEvents = filter === 'all' ? events : events.filter((event) => event.kind === filter);
 
+  const handleStopSleep = async () => {
+    if (!activeSleepStart || !baby) return;
+    try {
+      const startTime = new Date(activeSleepStart);
+      const endTime = new Date();
+      const minutes = Math.round((endTime.getTime() - startTime.getTime()) / 60_000);
+      const res = await api.createSleep({
+        baby_id: baby.id,
+        sleep_start: activeSleepStart,
+        sleep_end: endTime.toISOString(),
+        duration_minutes: minutes,
+        tracking_method: 'timer',
+        notes: null,
+      });
+      setActiveSleepStart(null);
+      setLastLoggedEvent({ kind: 'sleep', id: res.id });
+      setNotice(`Sleep session saved! ${minutes} min recorded.`);
+      void loadData(false);
+    } catch {
+      setError('Could not save the sleep session. Please try again.');
+    }
+  };
+
   const loadInsights = async () => {
     if (!baby || insightLoading) return;
     setInsightLoading(true);
@@ -320,67 +387,87 @@ export default function App() {
               </View>
             ) : (
               <>
-                {tab === 'home' && (
-                  <HomeScreen
-                    baby={baby}
-                    allBabies={allBabies}
-                    onSelectBaby={handleSelectBaby}
-                    onSignOut={handleSignOut}
-                    onAddBaby={() => setAddBabyModalVisible(true)}
-                    events={visibleEvents}
-                    feedings={feedings}
-                    diapers={diapers}
-                    sleep={sleep}
-                    onQuickLog={() => {}}
-                    activeSleepStart={activeSleepStart}
-                    elapsedSeconds={elapsedSeconds}
-                    formatElapsed={formatElapsed}
-                    notifications={notifications}
-                    onPressNotifications={() => setShowNotifications(true)}
-                    onRefreshData={() => loadData(false)}
-                    onSavedActivity={(kind, id) => {
-                      setLastLoggedEvent({ kind, id });
-                      setNotice(`New ${kind} logged successfully.`);
-                    }}
+                {!baby ? (
+                  <EmptyState
+                    title="Welcome to HungerCues!"
+                    description="Create a profile for your baby to start tracking feedings, sleep, diaper changes, and growth milestones with Gemini AI insights."
+                    icon="👶"
+                    ctaLabel="Add Baby Profile"
+                    onCta={() => setAddBabyModalVisible(true)}
+                    style={{ margin: 20 }}
                   />
+                ) : (
+                  <>
+                    {tab === 'home' && (
+                      <HomeScreen
+                        baby={baby}
+                        allBabies={allBabies}
+                        onSelectBaby={handleSelectBaby}
+                        onSignOut={handleSignOut}
+                        onAddBaby={() => setAddBabyModalVisible(true)}
+                        events={visibleEvents}
+                        feedings={feedings}
+                        diapers={diapers}
+                        sleep={sleep}
+                        onQuickLog={openQuickLog}
+                        activeSleepStart={activeSleepStart}
+                        elapsedSeconds={elapsedSeconds}
+                        formatElapsed={formatElapsed}
+                        notifications={notifications}
+                        onPressNotifications={() => setShowNotifications(true)}
+                        onRefreshData={() => loadData(false)}
+                        onSavedActivity={(kind, id) => {
+                          setLastLoggedEvent({ kind, id });
+                          setNotice(`New ${kind} logged successfully.`);
+                        }}
+                      />
+                    )}
+                    {tab === 'growth' && (
+                      <GrowthScreen
+                        baby={baby}
+                        growth={growth}
+                        unitSystem={unitSystem}
+                        setUnitSystem={setUnitSystem}
+                        onRefreshData={() => void loadData(false)}
+                      />
+                    )}
+                    {tab === 'history' && (
+                      <HistoryScreen
+                        events={events}
+                        feedings={feedings}
+                        sleepSessions={sleep}
+                        diapers={diapers}
+                        onRefreshData={loadData}
+                        onPressViewDeleted={() => setShowDeletedModal(true)}
+                      />
+                    )}
+                    {tab === 'insights' && (
+                      <InsightsScreen
+                        baby={baby}
+                        insight={insight}
+                        loading={insightLoading}
+                        feedings={feedings}
+                        sleep={sleep}
+                        onGenerate={loadInsights}
+                        aiQuestion={aiQuestion}
+                        setAiQuestion={setAiQuestion}
+                        aiAnswer={aiAnswer}
+                        setAiAnswer={setAiAnswer}
+                      />
+                    )}
+                    {tab === 'milestones' && <MilestonesScreen baby={baby} />}
+                  </>
                 )}
-                {tab === 'growth' && (
-                  <GrowthScreen
-                    baby={baby}
-                    growth={growth}
-                    unitSystem={unitSystem}
-                    setUnitSystem={setUnitSystem}
-                    onRefreshData={() => void loadData(false)}
-                  />
-                )}
-                {tab === 'history' && (
-                  <HistoryScreen
-                    events={events}
-                    feedings={feedings}
-                    sleepSessions={sleep}
-                    diapers={diapers}
-                    onRefreshData={loadData}
-                    onPressViewDeleted={() => setShowDeletedModal(true)}
-                  />
-                )}
-                {tab === 'insights' && (
-                  <InsightsScreen
-                    baby={baby}
-                    insight={insight}
-                    loading={insightLoading}
-                    feedings={feedings}
-                    sleep={sleep}
-                    onGenerate={loadInsights}
-                    aiQuestion={aiQuestion}
-                    setAiQuestion={setAiQuestion}
-                    aiAnswer={aiAnswer}
-                    setAiAnswer={setAiAnswer}
-                  />
-                )}
-                {tab === 'milestones' && <MilestonesScreen baby={baby} />}
               </>
             )}
           </ScrollView>
+          {/* Sleep timer banner — visible across all tabs when a session is active */}
+          <SleepTimerBanner
+            activeSleepStart={activeSleepStart}
+            elapsedSeconds={elapsedSeconds}
+            formatElapsed={formatElapsed}
+            onStop={() => void handleStopSleep()}
+          />
           <BottomNav
             active={tab}
             onChange={(newTab) => {
@@ -388,6 +475,7 @@ export default function App() {
               setTab(newTab);
             }}
             activeSleepStart={activeSleepStart}
+            onPressLogFAB={() => openLogMenu()}
           />
         </View>
       </KeyboardAvoidingView>
@@ -443,6 +531,81 @@ export default function App() {
         unitSystem={unitSystem}
         onRestore={loadData}
       />
+
+      {/* ── Global QuickLog Modal (opened from FAB or card buttons) ── */}
+      <QuickLogModal
+        visible={quickLogVisible}
+        activity={quickLogActivity}
+        baby={baby}
+        onClose={() => setQuickLogVisible(false)}
+        onSaved={(kind, id) => {
+          setQuickLogVisible(false);
+          setLastLoggedEvent({ kind, id });
+          setNotice(`New ${kind} logged successfully.`);
+          void loadData(false);
+        }}
+      />
+
+      {/* ── Log Activity Selector Sheet (spring slide-up) ── */}
+      <Modal
+        visible={showLogMenu}
+        transparent={true}
+        animationType="none"
+        onRequestClose={closeLogMenu}
+      >
+        <TouchableOpacity
+          style={styles.selectorOverlay}
+          activeOpacity={1}
+          onPress={closeLogMenu}
+        >
+          <Animated.View
+            style={[
+              styles.selectorSheet,
+              { transform: [{ translateY: sheetAnim }] },
+            ]}
+          >
+            <View style={styles.selectorHandle} />
+            <Text style={styles.selectorTitle}>What would you like to log?</Text>
+            <View style={styles.selectorRow}>
+              <TouchableOpacity
+                style={[styles.selectorBtn, { backgroundColor: '#FFF7ED' }]}
+                onPress={() => openQuickLog('feed')}
+                accessibilityRole="button"
+                accessibilityLabel="Log feeding"
+              >
+                <View style={[styles.selectorIconWrap, { backgroundColor: '#FFEDD5' }]}>
+                  <Milk color="#F97316" size={28} />
+                </View>
+                <Text style={[styles.selectorLabel, { color: '#C2410C' }]}>Feeding</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.selectorBtn, { backgroundColor: '#EEF2FF' }]}
+                onPress={() => openQuickLog('sleep')}
+                accessibilityRole="button"
+                accessibilityLabel="Log sleep"
+              >
+                <View style={[styles.selectorIconWrap, { backgroundColor: '#E0E7FF' }]}>
+                  <Moon color="#6366F1" size={28} />
+                </View>
+                <Text style={[styles.selectorLabel, { color: '#4338CA' }]}>Sleep</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.selectorBtn, { backgroundColor: '#ECFEFF' }]}
+                onPress={() => openQuickLog('diaper')}
+                accessibilityRole="button"
+                accessibilityLabel="Log diaper"
+              >
+                <View style={[styles.selectorIconWrap, { backgroundColor: '#CFFAFE' }]}>
+                  <BabyIcon color="#22D3EE" size={28} />
+                </View>
+                <Text style={[styles.selectorLabel, { color: '#0E7490' }]}>Diaper</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -490,5 +653,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
+  },
+  // ── Log Activity Selector Sheet ──
+  selectorOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  selectorSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  selectorHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E5E7EB',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  selectorTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: C.ink,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  selectorRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  selectorBtn: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    minHeight: 110,
+    justifyContent: 'center',
+  },
+  selectorIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  selectorLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
 });

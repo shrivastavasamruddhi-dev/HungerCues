@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -8,6 +9,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Vibration,
+  Animated,
 } from 'react-native';
 import { C } from '../constants/colors';
 import { api } from '../api';
@@ -18,6 +21,22 @@ import { getCustomDateTime, parseDurationHHMM } from '../utils/date';
 import { FeedForm } from '../features/log/components/FeedForm';
 import { SleepForm } from '../features/log/components/SleepForm';
 import { DiaperForm } from '../features/log/components/DiaperForm';
+
+// Simple module-level cache for progressive form memory
+const lastLoggedMemory = {
+  feed: {
+    subtype: 'Breast',
+    amount: '120',
+    duration: '15',
+  },
+  sleep: {
+    subtype: 'Nap',
+    duration: '01:00',
+  },
+  diaper: {
+    subtype: 'Wet',
+  },
+};
 
 interface Props {
   visible: boolean;
@@ -44,9 +63,17 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Success state for micro-animation feedback
+  const [successVisible, setSuccessVisible] = useState(false);
+  const [successScale] = useState(() => new Animated.Value(0));
+
   // Initialize form defaults based on active activity and type
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      setSuccessVisible(false);
+      successScale.setValue(0);
+      return;
+    }
 
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
@@ -56,18 +83,20 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
     setNotes('');
     setBreastSide('Left');
     setError(null);
+    setSuccessVisible(false);
+    successScale.setValue(0);
 
     if (activity === 'feed') {
-      setSubtype('Breast');
-      setFeedType('Breast');
-      setAmount('120');
-      setDuration('15');
+      setSubtype(lastLoggedMemory.feed.subtype);
+      setFeedType(lastLoggedMemory.feed.subtype as FeedType);
+      setAmount(lastLoggedMemory.feed.amount);
+      setDuration(lastLoggedMemory.feed.duration);
     } else if (activity === 'sleep') {
-      setSubtype('Nap');
-      setDuration('01:00');
+      setSubtype(lastLoggedMemory.sleep.subtype);
+      setDuration(lastLoggedMemory.sleep.duration);
       setSleepTrackingMode('manual');
     } else if (activity === 'diaper') {
-      setSubtype('Wet');
+      setSubtype(lastLoggedMemory.diaper.subtype);
     }
   }, [visible, activity]);
 
@@ -76,6 +105,9 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
     setSaving(true);
     setError(null);
     const now = new Date();
+
+    let savedId = 0;
+    let savedKind: 'feed' | 'sleep' | 'diaper' = 'feed';
 
     try {
       if (activity === 'feed') {
@@ -101,7 +133,8 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
           notes: notes || null,
         });
 
-        onSaved('feed', res.id);
+        savedId = res.id;
+        savedKind = 'feed';
       } else if (activity === 'sleep') {
         const isNightSleep = subtype === 'Night';
         const minutes = parseDurationHHMM(duration);
@@ -130,7 +163,8 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
           notes: notes || null,
         });
 
-        onSaved('sleep', res.id);
+        savedId = res.id;
+        savedKind = 'sleep';
       } else if (activity === 'diaper') {
         let changeTime = now;
         if (customTimeEnabled) {
@@ -149,10 +183,38 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
           notes: notes || null,
         });
 
-        onSaved('diaper', res.id);
+        savedId = res.id;
+        savedKind = 'diaper';
       }
 
-      onClose();
+      // Cache the saved values for progressive memory
+      if (savedKind === 'feed') {
+        lastLoggedMemory.feed.subtype = subtype;
+        lastLoggedMemory.feed.amount = amount;
+        lastLoggedMemory.feed.duration = duration;
+      } else if (savedKind === 'sleep') {
+        lastLoggedMemory.sleep.subtype = subtype;
+        lastLoggedMemory.sleep.duration = duration;
+      } else if (savedKind === 'diaper') {
+        lastLoggedMemory.diaper.subtype = subtype;
+      }
+
+      // Success animation and double-tap haptic vibration
+      Vibration.vibrate([0, 15, 30, 15]);
+      setSuccessVisible(true);
+      Animated.spring(successScale, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        useNativeDriver: Platform.OS !== 'web',
+      }).start();
+
+      setTimeout(() => {
+        onSaved(savedKind, savedId);
+        onClose();
+        setSuccessVisible(false);
+        successScale.setValue(0);
+      }, 950);
     } catch {
       setError('Cannot save entry. Please check the backend connection and try again.');
     } finally {
@@ -180,99 +242,159 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Log {getActivityTitle()}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.formContainer} keyboardShouldPersistTaps="handled">
-            {error && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
+        <KeyboardAvoidingView
+          style={styles.kavWrapper}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalContent}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                <Text style={styles.modalTitle}>Log {getActivityTitle()}</Text>
+                {baby && (
+                  <Text style={styles.modalSubtitle}>· {baby.name}</Text>
+                )}
               </View>
-            )}
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeButton}
+                accessibilityLabel="Close log modal"
+                accessibilityRole="button"
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-            {/* Type selector row */}
-            <Text style={styles.sectionLabel}>{getActivityTitle()} Type</Text>
-            <View style={styles.typeRow}>
-              {getSubtypeOptions().map((opt) => (
-                <TouchableOpacity
-                  key={opt}
-                  onPress={() => {
-                    setSubtype(opt);
-                    if (activity === 'feed') setFeedType(opt as FeedType);
-                  }}
-                  style={[styles.typeCard, subtype === opt && styles.typeCardActive]}
+            {successVisible ? (
+              <Animated.View
+                style={[
+                  styles.successContainer,
+                  { transform: [{ scale: successScale }] },
+                ]}
+              >
+                <View style={styles.successIconCircle}>
+                  <Text style={styles.successIconText}>✓</Text>
+                </View>
+                <Text style={styles.successTitle}>Activity Logged!</Text>
+                <Text style={styles.successSubtitle}>
+                  {getActivityTitle()} entry saved successfully
+                </Text>
+              </Animated.View>
+            ) : (
+              <>
+                <ScrollView
+                  style={styles.formContainer}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
                 >
-                  <Text style={[styles.typeLabel, subtype === opt && styles.typeLabelActive]}>
-                    {opt}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  {error && (
+                    <View style={styles.errorBox}>
+                      <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                  )}
 
-            {/* Form Fields wrapper */}
-            <View style={styles.formCard}>
-              {activity === 'feed' && (
-                <FeedForm
-                  subtype={subtype}
-                  amount={amount}
-                  setAmount={setAmount}
-                  duration={duration}
-                  setDuration={setDuration}
-                  notes={notes}
-                  setNotes={setNotes}
-                  breastSide={breastSide}
-                  setBreastSide={setBreastSide}
-                  saving={saving}
-                  onLog={handleSave}
-                  customTimeEnabled={customTimeEnabled}
-                  setCustomTimeEnabled={setCustomTimeEnabled}
-                  customTime={customTime}
-                  setCustomTime={setCustomTime}
-                />
-              )}
+                  {/* Type selector row */}
+                  <Text style={styles.sectionLabel}>{getActivityTitle()} Type</Text>
+                  <View style={styles.typeRow}>
+                    {getSubtypeOptions().map((opt) => (
+                      <TouchableOpacity
+                        key={opt}
+                        onPress={() => {
+                          setSubtype(opt);
+                          if (activity === 'feed') setFeedType(opt as FeedType);
+                        }}
+                        style={[styles.typeCard, subtype === opt && styles.typeCardActive]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select ${opt}`}
+                      >
+                        <Text style={[styles.typeLabel, subtype === opt && styles.typeLabelActive]}>
+                          {opt}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
 
-              {activity === 'sleep' && (
-                <SleepForm
-                  sleepTrackingMode={sleepTrackingMode}
-                  setSleepTrackingMode={setSleepTrackingMode}
-                  activeSleepStart={null}
-                  setActiveSleepStart={() => {}}
-                  elapsedSeconds={0}
-                  formatElapsed={() => '00:00:00'}
-                  customTimeEnabled={customTimeEnabled}
-                  setCustomTimeEnabled={setCustomTimeEnabled}
-                  customTime={customTime}
-                  setCustomTime={setCustomTime}
-                  duration={duration}
-                  setDuration={setDuration}
-                  notes={notes}
-                  setNotes={setNotes}
-                  saving={saving}
-                  onLog={handleSave}
-                />
-              )}
+                  {/* Form Fields wrapper */}
+                  <View style={styles.formCard}>
+                    {activity === 'feed' && (
+                      <FeedForm
+                        subtype={subtype}
+                        amount={amount}
+                        setAmount={setAmount}
+                        duration={duration}
+                        setDuration={setDuration}
+                        notes={notes}
+                        setNotes={setNotes}
+                        breastSide={breastSide}
+                        setBreastSide={setBreastSide}
+                        saving={saving}
+                        onLog={handleSave}
+                        customTimeEnabled={customTimeEnabled}
+                        setCustomTimeEnabled={setCustomTimeEnabled}
+                        customTime={customTime}
+                        setCustomTime={setCustomTime}
+                      />
+                    )}
 
-              {activity === 'diaper' && (
-                <DiaperForm
-                  notes={notes}
-                  setNotes={setNotes}
-                  saving={saving}
-                  onLog={handleSave}
-                  customTimeEnabled={customTimeEnabled}
-                  setCustomTimeEnabled={setCustomTimeEnabled}
-                  customTime={customTime}
-                  setCustomTime={setCustomTime}
-                />
-              )}
-            </View>
-          </ScrollView>
-        </View>
+                    {activity === 'sleep' && (
+                      <SleepForm
+                        sleepTrackingMode={sleepTrackingMode}
+                        setSleepTrackingMode={setSleepTrackingMode}
+                        activeSleepStart={null}
+                        setActiveSleepStart={() => {}}
+                        elapsedSeconds={0}
+                        formatElapsed={() => '00:00:00'}
+                        customTimeEnabled={customTimeEnabled}
+                        setCustomTimeEnabled={setCustomTimeEnabled}
+                        customTime={customTime}
+                        setCustomTime={setCustomTime}
+                        duration={duration}
+                        setDuration={setDuration}
+                        notes={notes}
+                        setNotes={setNotes}
+                        saving={saving}
+                        onLog={handleSave}
+                      />
+                    )}
+
+                    {activity === 'diaper' && (
+                      <DiaperForm
+                        notes={notes}
+                        setNotes={setNotes}
+                        saving={saving}
+                        onLog={handleSave}
+                        customTimeEnabled={customTimeEnabled}
+                        setCustomTimeEnabled={setCustomTimeEnabled}
+                        customTime={customTime}
+                        setCustomTime={setCustomTime}
+                      />
+                    )}
+                  </View>
+
+                  {/* Bottom padding so last form field clears the sticky button */}
+                  <View style={{ height: 20 }} />
+                </ScrollView>
+
+                {/* ── Sticky Save Footer ── always visible above keyboard */}
+                <View style={styles.stickyFooter}>
+                  <TouchableOpacity
+                    style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                    onPress={() => void handleSave()}
+                    disabled={saving}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Save ${getActivityTitle()} entry`}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#FFF" />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Save {getActivityTitle()}</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -281,16 +403,20 @@ export function QuickLogModal({ visible, activity, baby, onClose, onSaved }: Pro
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  kavWrapper: {
+    width: '100%',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: C.canvas,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    maxHeight: '90%',
-    minHeight: '60%',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    maxHeight: '92%',
+    minHeight: '55%',
+    paddingBottom: Platform.OS === 'ios' ? 0 : 0,
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 20,
@@ -308,15 +434,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ECECEC',
   },
+  modalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: C.ink,
   },
+  modalSubtitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: C.muted,
+  },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -344,7 +481,7 @@ const styles = StyleSheet.create({
   },
   typeCard: {
     flex: 1,
-    height: 48,
+    height: 56,
     borderRadius: 14,
     backgroundColor: C.card,
     alignItems: 'center',
@@ -373,18 +510,85 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 10,
     elevation: 1,
-    marginBottom: 30,
+    marginBottom: 4,
   },
   errorBox: {
     backgroundColor: '#FEE2E2',
     borderRadius: 16,
     padding: 12,
     marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   errorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '700',
+    color: '#B91C1C',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 18,
+  },
+  // ── Sticky save footer ──
+  stickyFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    backgroundColor: C.canvas,
+    borderTopWidth: 1,
+    borderTopColor: '#ECECEC',
+  },
+  saveButton: {
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: C.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: C.purple,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  saveButtonDisabled: {
+    opacity: 0.55,
+  },
+  saveButtonText: {
+    color: '#FFF',
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  // ── Success state overlay ──
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    minHeight: 250,
+  },
+  successIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  successIconText: {
+    color: '#16A34A',
+    fontSize: 32,
+    fontWeight: '800',
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: C.ink,
+    marginBottom: 8,
+  },
+  successSubtitle: {
+    fontSize: 13,
+    color: C.muted,
+    fontWeight: '600',
     textAlign: 'center',
   },
 });

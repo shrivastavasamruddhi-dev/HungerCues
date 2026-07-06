@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Menu } from 'lucide-react-native';
 import { C } from '../constants/colors';
 import type { Baby } from '../types';
 
@@ -80,7 +81,7 @@ export function BabyProfileCard({ baby, onOpenSidebar }: Props) {
         onPress={onOpenSidebar}
         style={styles.menuButton}
       >
-        <Text style={styles.menuIcon}>☰</Text>
+        <Menu size={20} color={C.purpleDark} />
       </TouchableOpacity>
     </View>
   );
@@ -133,9 +134,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   menuButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',

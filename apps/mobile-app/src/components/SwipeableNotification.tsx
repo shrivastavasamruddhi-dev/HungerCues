@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Animated, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Animated, PanResponder, StyleSheet, Text, View, Platform } from 'react-native';
 import { C } from '../constants/colors';
 import type { NotificationEntry } from '../types';
 
@@ -27,19 +27,19 @@ export function SwipeableNotification({ notification, onDismiss }: SwipeableNoti
             Animated.timing(translateX, {
               toValue: gestureState.dx > 0 ? 500 : -500,
               duration: 220,
-              useNativeDriver: true,
+              useNativeDriver: Platform.OS !== 'web',
             }),
             Animated.timing(opacity, {
               toValue: 0,
               duration: 200,
-              useNativeDriver: true,
+              useNativeDriver: Platform.OS !== 'web',
             }),
           ]).start(onDismiss);
         } else {
           // Snap back
           Animated.spring(translateX, {
             toValue: 0,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
             tension: 80,
             friction: 8,
           }).start();

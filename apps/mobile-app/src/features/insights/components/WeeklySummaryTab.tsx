@@ -4,6 +4,8 @@ import { C } from '../../../constants/colors';
 import { ErrorBox } from '../../../components/ErrorBox';
 import type { AIWeeklySummary } from '../../../types';
 
+import { SkeletonCard } from '../../../components/SkeletonCard';
+
 interface Props {
   weeklySummary: AIWeeklySummary | null;
   weeklyLoading: boolean;
@@ -23,40 +25,50 @@ export function WeeklySummaryTab({
         <ErrorBox message={weeklyError} style={{ marginTop: 12, marginBottom: 12 }} />
       )}
 
-      <View style={[styles.insightCard, { backgroundColor: C.purpleDark }]}>
-        <Text style={styles.insightEyebrow}>WEEKLY SUMMARY</Text>
-        <Text style={styles.insightCopy}>
-          {weeklySummary?.summary ??
-            'Generate a comprehensive weekly summary of all feeding, sleep, diaper, and growth logs.'}
-        </Text>
-      </View>
-
-      {weeklySummary && (
-        <View style={{ gap: 12, marginTop: 14 }}>
-          <View style={styles.insightMini}>
-            <Text style={styles.weeklySectionTitle}>🍏 Feeding Analysis</Text>
-            <Text style={styles.weeklySectionText}>{weeklySummary.feeding_insights}</Text>
-          </View>
-          <View style={styles.insightMini}>
-            <Text style={styles.weeklySectionTitle}>☾ Sleep Analysis</Text>
-            <Text style={styles.weeklySectionText}>{weeklySummary.sleep_insights}</Text>
-          </View>
-          <View style={styles.insightMini}>
-            <Text style={styles.weeklySectionTitle}>⚖ Growth Analysis</Text>
-            <Text style={styles.weeklySectionText}>{weeklySummary.growth_insights}</Text>
-          </View>
+      {weeklyLoading ? (
+        <View style={{ gap: 12, marginBottom: 14 }}>
+          <SkeletonCard />
+          <SkeletonCard style={{ minHeight: 140 }} />
+          <SkeletonCard style={{ minHeight: 100 }} />
         </View>
-      )}
-
-      {weeklySummary && (
-        <View style={styles.recommendationCard}>
-          <Text style={styles.weeklyRecommendationTitle}>Weekly Recommendations</Text>
-          {weeklySummary.recommendations.map((item, index) => (
-            <Text key={item} style={styles.weeklyRecommendationText}>
-              {index + 1}. {item}
+      ) : (
+        <>
+          <View style={[styles.insightCard, { backgroundColor: C.purpleDark }]}>
+            <Text style={styles.insightEyebrow}>WEEKLY SUMMARY</Text>
+            <Text style={styles.insightCopy}>
+              {weeklySummary?.summary ??
+                'Generate a comprehensive weekly summary of all feeding, sleep, diaper, and growth logs.'}
             </Text>
-          ))}
-        </View>
+          </View>
+
+          {weeklySummary && (
+            <View style={{ gap: 12, marginTop: 14 }}>
+              <View style={styles.insightMini}>
+                <Text style={styles.weeklySectionTitle}>🍏 Feeding Analysis</Text>
+                <Text style={styles.weeklySectionText}>{weeklySummary.feeding_insights}</Text>
+              </View>
+              <View style={styles.insightMini}>
+                <Text style={styles.weeklySectionTitle}>☾ Sleep Analysis</Text>
+                <Text style={styles.weeklySectionText}>{weeklySummary.sleep_insights}</Text>
+              </View>
+              <View style={styles.insightMini}>
+                <Text style={styles.weeklySectionTitle}>⚖ Growth Analysis</Text>
+                <Text style={styles.weeklySectionText}>{weeklySummary.growth_insights}</Text>
+              </View>
+            </View>
+          )}
+
+          {weeklySummary && (
+            <View style={styles.recommendationCard}>
+              <Text style={styles.weeklyRecommendationTitle}>Weekly Recommendations</Text>
+              {weeklySummary.recommendations.map((item, index) => (
+                <Text key={item} style={styles.weeklyRecommendationText}>
+                  {index + 1}. {item}
+                </Text>
+              ))}
+            </View>
+          )}
+        </>
       )}
 
       <TouchableOpacity

@@ -10,9 +10,10 @@ import type { Baby } from '../../types';
 
 interface Props {
   baby: Baby | null;
+  hideHeader?: boolean;
 }
 
-export function MilestonesScreen({ baby }: Props) {
+export function MilestonesScreen({ baby, hideHeader = false }: Props) {
   const {
     milestones,
     loading,
@@ -37,18 +38,20 @@ export function MilestonesScreen({ baby }: Props) {
   } = useMilestones(baby);
 
   const defaultCDC = [
-    { name: 'Social Smile', age: '2 months' },
-    { name: 'Cooing/Vocalizing', age: '2 months' },
-    { name: 'Rolling Over', age: '5 months' },
-    { name: 'Sitting Up', age: '6 months' },
-    { name: 'Crawling', age: '9 months' },
-    { name: 'First Words', age: '12 months' },
-    { name: 'First Steps', age: '12 months' },
+    { name: 'Social Smile', age: '2 months', category: 'Social' },
+    { name: 'Cooing/Vocalizing', age: '2 months', category: 'Language' },
+    { name: 'Looks at hands', age: '2 months', category: 'Cognitive' },
+    { name: 'Rolling Over', age: '5 months', category: 'Motor' },
+    { name: 'Reaches for toy', age: '6 months', category: 'Cognitive' },
+    { name: 'Sitting Up', age: '6 months', category: 'Motor' },
+    { name: 'Crawling', age: '9 months', category: 'Motor' },
+    { name: 'First Words', age: '12 months', category: 'Language' },
+    { name: 'First Steps', age: '12 months', category: 'Motor' },
   ];
 
   return (
     <View style={{ paddingBottom: 40 }}>
-      <Header title="Milestones" action="⚐" />
+      {!hideHeader && <Header title="Milestones" action="⚐" />}
       <Text style={styles.heroTitle}>Celebrate the{'\n'}small steps.</Text>
 
       {error && <ErrorBox message={error} style={{ marginBottom: 16 }} />}

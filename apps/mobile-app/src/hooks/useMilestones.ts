@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Vibration } from 'react-native';
 import { milestoneService } from '../services/milestoneService';
 import type { Baby, Milestone, MilestoneMedia } from '../types';
 
@@ -43,31 +44,50 @@ export function useMilestones(baby: Baby | null) {
       // Uncheck / delete
       try {
         await milestoneService.deleteMilestone(existing.id);
+        Vibration.vibrate(80);
         setMilestones((prev) => prev.filter((m) => m.id !== existing.id));
+        if (activeMilestoneName?.toLowerCase() === name.toLowerCase()) {
+          setActiveMilestoneName(null);
+          setActiveMilestoneNotes('');
+        }
       } catch {
         setError('Could not delete milestone.');
       }
     } else {
-      // Check / Add (Open inline dialog to save)
-      setActiveMilestoneName(name);
-      setActiveMilestoneNotes('');
+      // Create immediately so we have a milestone id for media manager
+      try {
+        const created = await milestoneService.createMilestone({
+          baby_id: baby.id,
+          name,
+          achieved_at: new Date().toISOString().split('T')[0],
+          notes: null,
+        });
+        Vibration.vibrate([0, 15, 30, 15]);
+        setMilestones((prev) => [...prev, created]);
+        setActiveMilestoneName(name);
+        setActiveMilestoneNotes('');
+      } catch {
+        setError('Could not initialize milestone.');
+      }
     }
   };
 
   const handleSaveMilestone = async () => {
     if (!baby || !activeMilestoneName) return;
+    const matched = milestones.find((m) => m.name.toLowerCase() === activeMilestoneName.toLowerCase());
+    if (!matched) return;
     try {
-      const created = await milestoneService.createMilestone({
-        baby_id: baby.id,
-        name: activeMilestoneName,
-        achieved_at: new Date().toISOString().split('T')[0],
+      const updated = await milestoneService.updateMilestone(matched.id, {
         notes: activeMilestoneNotes || null,
       });
-      setMilestones((prev) => [...prev, created]);
+      setMilestones((prev) =>
+        prev.map((m) => (m.id === matched.id ? { ...m, notes: activeMilestoneNotes || null } : m))
+      );
+      Vibration.vibrate([0, 15, 30, 15]);
       setActiveMilestoneName(null);
       setActiveMilestoneNotes('');
     } catch {
-      setError('Could not save milestone.');
+      setError('Could not save notes.');
     }
   };
 
@@ -80,6 +100,7 @@ export function useMilestones(baby: Baby | null) {
         achieved_at: new Date().toISOString().split('T')[0],
         notes: customNotes || null,
       });
+      Vibration.vibrate([0, 15, 30, 15]);
       setMilestones((prev) => [...prev, created]);
       setCustomName('');
       setCustomNotes('');
@@ -149,6 +170,7 @@ export function useMilestones(baby: Baby | null) {
   const deleteMilestone = async (id: number) => {
     try {
       await milestoneService.deleteMilestone(id);
+      Vibration.vibrate(80);
       setMilestones((prev) => prev.filter((item) => item.id !== id));
     } catch {
       setError('Could not delete milestone.');

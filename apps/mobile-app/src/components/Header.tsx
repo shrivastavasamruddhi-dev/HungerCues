@@ -41,8 +41,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: C.ink, fontSize: 16, fontWeight: '600' },
   headerAction: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 22,
     backgroundColor: C.purple,
     alignItems: 'center',
